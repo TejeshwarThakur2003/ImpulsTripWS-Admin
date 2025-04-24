@@ -21,6 +21,21 @@ declare global {
 }
 
 /**
+ * Determine which base URL to use based on the endpoint
+ */
+function getBaseUrl(endpoint: string): string {
+  // FastAPI endpoints
+  if (endpoint.startsWith('/blog/') || 
+      endpoint.startsWith('/waitlist') || 
+      endpoint.startsWith('/contact')) {
+    return import.meta.env.PUBLIC_FASTAPI_URL;
+  }
+  
+  // Express.js endpoints
+  return import.meta.env.PUBLIC_API_URL;
+}
+
+/**
  * Makes an API request with proper error handling and authentication
  */
 export const apiRequest = async <T>(
@@ -37,8 +52,8 @@ export const apiRequest = async <T>(
 
   console.log(`⭐ API Request initiated: ${endpoint}, Method: ${method}`);
 
-  // Force use of a consistent URL - the server is running on port 8000
-  const baseUrl = 'http://localhost:8000';
+  // Use the appropriate base URL based on the endpoint
+  const baseUrl = getBaseUrl(endpoint);
   
   const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
   
