@@ -1,0 +1,784 @@
+---
+import AdminLayout from "../layouts/AdminLayout.astro";
+import { apiRequest } from "../utils/api";
+
+// This could be fetched from the API in a real implementation
+const categories = [
+  { id: 1, name: "Travel Tips" },
+  { id: 2, name: "Destinations" },
+  { id: 3, name: "Adventure" },
+  { id: 4, name: "Budget Travel" },
+];
+---
+
+<AdminLayout title="Blog Editor" currentPage="blog-editor">
+  <div class="blog-editor-container">
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <h2>Blog Editor</h2>
+        <p class="text-muted">Create and manage blog posts</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <button id="newPostBtn" class="btn btn-primary">
+          <i class="fas fa-plus-circle me-2"></i>New Post
+        </button>
+      </div>
+    </div>
+
+    <!-- Editor interface -->
+    <div class="row">
+      <div class="col-lg-8">
+        <!-- Editor Form -->
+        <div class="editor-card">
+          <div class="editor-card-header">
+            <ul class="nav nav-tabs" id="editorTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link active"
+                  id="edit-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#edit-content"
+                  type="button"
+                  role="tab"
+                  aria-controls="edit-content"
+                  aria-selected="true"
+                >
+                  <i class="fas fa-edit me-2"></i>Edit
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link"
+                  id="preview-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#preview-content"
+                  type="button"
+                  role="tab"
+                  aria-controls="preview-content"
+                  aria-selected="false"
+                >
+                  <i class="fas fa-eye me-2"></i>Preview
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link"
+                  id="posts-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#all-posts"
+                  type="button"
+                  role="tab"
+                  aria-controls="all-posts"
+                  aria-selected="false"
+                >
+                  <i class="fas fa-list me-2"></i>All Posts
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="editor-card-body">
+            <div class="tab-content" id="editorTabContent">
+              <!-- Edit Tab -->
+              <div
+                class="tab-pane fade show active"
+                id="edit-content"
+                role="tabpanel"
+                aria-labelledby="edit-tab"
+              >
+                <form id="postForm">
+                  <input type="hidden" id="postId" value="" />
+
+                  <div class="mb-3">
+                    <label for="postTitle" class="form-label">Title</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="postTitle"
+                      placeholder="Enter post title"
+                      required
+                    />
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="postTagline" class="form-label">Tagline</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="postTagline"
+                      placeholder="Enter a brief tagline"
+                    />
+                  </div>
+
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label for="postAuthor" class="form-label">Author</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="postAuthor"
+                        placeholder="Enter author name"
+                      />
+                    </div>
+                    <div class="col-md-6">
+                      <label for="postCategory" class="form-label"
+                        >Category</label
+                      >
+                      <select class="form-select" id="postCategory">
+                        {
+                          categories.map((category) => (
+                            <option value={category.id}>{category.name}</option>
+                          ))
+                        }
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="postCoverImage" class="form-label"
+                      >Cover Image</label
+                    >
+                    <input
+                      type="file"
+                      class="form-control"
+                      id="postCoverImage"
+                      accept="image/*"
+                    />
+                    <div id="coverImagePreview" class="mt-2 d-none">
+                      <img
+                        src=""
+                        alt="Cover preview"
+                        class="img-thumbnail"
+                        style="max-height: 200px;"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="postContent" class="form-label">Content</label>
+                    <div id="html-editor-container">
+                      <div id="toolbar">
+                        <span class="ql-formats">
+                          <select class="ql-header">
+                            <option value="1">Heading 1</option>
+                            <option value="2">Heading 2</option>
+                            <option value="3">Heading 3</option>
+                            <option value="4">Heading 4</option>
+                            <option value="5">Heading 5</option>
+                            <option value="6">Heading 6</option>
+                            <option selected>Normal</option>
+                          </select>
+                        </span>
+                        <span class="ql-formats">
+                          <button class="ql-bold"></button>
+                          <button class="ql-italic"></button>
+                          <button class="ql-underline"></button>
+                          <button class="ql-strike"></button>
+                        </span>
+                        <span class="ql-formats">
+                          <button class="ql-blockquote"></button>
+                          <button class="ql-code-block"></button>
+                        </span>
+                        <span class="ql-formats">
+                          <button class="ql-list" value="ordered"></button>
+                          <button class="ql-list" value="bullet"></button>
+                        </span>
+                        <span class="ql-formats">
+                          <button class="ql-link"></button>
+                          <button class="ql-image"></button>
+                          <button class="ql-video"></button>
+                        </span>
+                        <span class="ql-formats">
+                          <button class="ql-clean"></button>
+                        </span>
+                      </div>
+                      <div id="editor" style="height: 400px;"></div>
+                      <input type="hidden" id="postContent" />
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="postInlineImages" class="form-label"
+                      >Images</label
+                    >
+                    <input
+                      type="file"
+                      class="form-control"
+                      id="postInlineImages"
+                      accept="image/*"
+                      multiple
+                    />
+                    <div
+                      id="inlineImagesPreview"
+                      class="mt-2 row row-cols-2 row-cols-md-4 g-2"
+                    >
+                      <!-- Preview images will appear here -->
+                    </div>
+                    <div class="form-text">
+                      Upload images to use in your content. You can insert them
+                      using the image button in the editor.
+                    </div>
+                  </div>
+
+                  <div
+                    class="d-flex justify-content-between align-items-center mt-4"
+                  >
+                    <div>
+                      <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Save Post
+                      </button>
+                      <button
+                        type="button"
+                        id="clearFormBtn"
+                        class="btn btn-outline-secondary ms-2"
+                      >
+                        <i class="fas fa-times me-2"></i>Clear
+                      </button>
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        id="deletePostBtn"
+                        class="btn btn-danger d-none"
+                      >
+                        <i class="fas fa-trash-alt me-2"></i>Delete
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Preview Tab -->
+              <div
+                class="tab-pane fade"
+                id="preview-content"
+                role="tabpanel"
+                aria-labelledby="preview-tab"
+              >
+                <div class="preview-container">
+                  <div class="preview-header mb-4">
+                    <h1 id="previewTitle" class="mb-2">Post Title</h1>
+                    <p id="previewTagline" class="text-muted">Post Tagline</p>
+                    <div class="preview-meta">
+                      <span id="previewAuthor">Author</span> |
+                      <span id="previewCategory">Category</span> |
+                      <span id="previewDate"
+                        >{new Date().toLocaleDateString()}</span
+                      >
+                    </div>
+                    <div id="previewCoverImage" class="mt-3 mb-4">
+                      <!-- Cover image will appear here -->
+                    </div>
+                  </div>
+                  <div id="previewBody" class="preview-body">
+                    <!-- Post content will appear here -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- All Posts Tab -->
+              <div
+                class="tab-pane fade"
+                id="all-posts"
+                role="tabpanel"
+                aria-labelledby="posts-tab"
+              >
+                <div class="posts-filter mb-3">
+                  <div class="row">
+                    <div class="col-md-6">
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="searchPosts"
+                        placeholder="Search posts..."
+                      />
+                    </div>
+                    <div class="col-md-4">
+                      <select class="form-select" id="filterCategory">
+                        <option value="">All Categories</option>
+                        {
+                          categories.map((category) => (
+                            <option value={category.id}>{category.name}</option>
+                          ))
+                        }
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <select class="form-select" id="sortPosts">
+                        <option value="newest">Newest</option>
+                        <option value="oldest">Oldest</option>
+                        <option value="title">Title</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="postsTableContainer" class="mt-3">
+                  <div class="table-responsive">
+                    <table class="table table-dark">
+                      <thead>
+                        <tr>
+                          <th>Title</th>
+                          <th>Author</th>
+                          <th>Category</th>
+                          <th>Date</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="postsTableBody">
+                        <!-- Posts will be loaded here -->
+                        <tr>
+                          <td colspan="5" class="text-center">
+                            Loading posts...
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <!-- Help sidebar -->
+        <div class="editor-card">
+          <div class="editor-card-header">
+            <h5>HTML Editor Guide</h5>
+          </div>
+          <div class="editor-card-body">
+            <div class="markdown-help">
+              <div class="markdown-item">
+                <div class="markdown-syntax">Headings</div>
+                <div class="markdown-desc">
+                  Use the dropdown to select heading levels (H1-H6)
+                </div>
+              </div>
+              <div class="markdown-item">
+                <div class="markdown-syntax">Text Formatting</div>
+                <div class="markdown-desc">
+                  Use the toolbar buttons for bold, italic, underline, etc.
+                </div>
+              </div>
+              <div class="markdown-item">
+                <div class="markdown-syntax">Links</div>
+                <div class="markdown-desc">
+                  Use the link button to insert hyperlinks
+                </div>
+              </div>
+              <div class="markdown-item">
+                <div class="markdown-syntax">Images</div>
+                <div class="markdown-desc">
+                  Use the image button to insert images
+                </div>
+              </div>
+              <div class="markdown-item">
+                <div class="markdown-syntax">Lists</div>
+                <div class="markdown-desc">
+                  Create ordered or bulleted lists with the list buttons
+                </div>
+              </div>
+              <div class="markdown-item">
+                <div class="markdown-syntax">Blockquotes</div>
+                <div class="markdown-desc">
+                  Use the blockquote button for quotes
+                </div>
+              </div>
+              <div class="markdown-item">
+                <div class="markdown-syntax">Code Blocks</div>
+                <div class="markdown-desc">
+                  Use the code block button for code snippets
+                </div>
+              </div>
+              <div class="markdown-item">
+                <div class="markdown-syntax">Clear Formatting</div>
+                <div class="markdown-desc">
+                  Use the clean button to remove formatting
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image Manager -->
+        <div class="editor-card mt-4">
+          <div class="editor-card-header">
+            <h5>Image Manager</h5>
+          </div>
+          <div class="editor-card-body">
+            <p>
+              Uploaded images for this post. Click to insert into content at
+              cursor position.
+            </p>
+            <div id="imageGallery" class="row row-cols-2 g-2">
+              <!-- Images will be loaded here -->
+              <div class="col text-center text-muted">
+                <div class="p-3 border rounded">
+                  <i class="fas fa-image fa-2x mb-2"></i>
+                  <p>No images yet</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .editor-card {
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .editor-card-header {
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #333;
+  }
+
+  .editor-card-body {
+    padding: 1.5rem;
+  }
+
+  .nav-tabs {
+    border-bottom: none;
+  }
+
+  .nav-tabs .nav-link {
+    color: var(--gray-light);
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 0.5rem 1rem;
+  }
+
+  .nav-tabs .nav-link:hover {
+    color: var(--primary);
+    border-color: transparent;
+  }
+
+  .nav-tabs .nav-link.active {
+    color: var(--primary);
+    background-color: transparent;
+    border-bottom: 2px solid var(--primary);
+  }
+
+  .preview-container {
+    background-color: #222;
+    padding: 2rem;
+    border-radius: 4px;
+  }
+
+  .preview-meta {
+    color: var(--gray-light);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .markdown-help {
+    font-size: 0.9rem;
+  }
+
+  .markdown-item {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #333;
+  }
+
+  .markdown-syntax {
+    font-family: monospace;
+    color: var(--primary);
+    margin-bottom: 0.25rem;
+  }
+
+  .markdown-desc {
+    color: var(--gray-light);
+  }
+</style>
+
+<!-- Include Quill HTML editor styles and script -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
+<script is:inline src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+
+<!-- Initialize Quill editor -->
+<script>
+  // Declare global Quill type
+  declare const Quill: any;
+
+  // Extend Window interface for custom properties
+  declare global {
+    interface Window {
+      loadPostContent: (htmlContent: string) => void;
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    if (document.getElementById("editor")) {
+      const quill = new Quill("#editor", {
+        theme: "snow",
+        modules: {
+          toolbar: "#toolbar",
+        },
+      });
+
+      // Handle form submission - store HTML content in hidden input
+      const postForm = document.getElementById("postForm");
+      if (postForm) {
+        postForm.addEventListener("submit", function () {
+          const contentInput = document.getElementById("postContent");
+          if (contentInput instanceof HTMLInputElement) {
+            contentInput.value = quill.root.innerHTML;
+          }
+        });
+      }
+
+      // Handle post loading - populate editor with HTML content
+      window.loadPostContent = function (htmlContent: string) {
+        quill.root.innerHTML = htmlContent;
+      };
+    }
+  });
+</script>
+
+<script>
+  import { apiRequest } from "../utils/api";
+
+  document.addEventListener("DOMContentLoaded", async function () {
+    // Blog post interface
+    interface BlogPost {
+      _id: string;
+      title: string;
+      tagline: string;
+      author: string;
+      content: string; // This will now be HTML content
+      cover_image_id: string;
+      image_ids: string[];
+      category?: string; // Added category property
+      created_at: string;
+      updated_at: string;
+    }
+
+    let currentPostId: string | null = null;
+    const postForm = document.getElementById("postForm") as HTMLFormElement;
+    const postIdField = document.getElementById("postId") as HTMLInputElement;
+    const titleField = document.getElementById("postTitle") as HTMLInputElement;
+    const taglineField = document.getElementById(
+      "postTagline"
+    ) as HTMLInputElement;
+    const authorField = document.getElementById(
+      "postAuthor"
+    ) as HTMLInputElement;
+    const categoryField = document.getElementById(
+      "postCategory"
+    ) as HTMLSelectElement;
+    const coverImageField = document.getElementById(
+      "postCoverImage"
+    ) as HTMLInputElement;
+    const inlineImagesField = document.getElementById(
+      "postInlineImages"
+    ) as HTMLInputElement;
+
+    // Load all posts into the table
+    const loadPosts = async () => {
+      try {
+        const result = await apiRequest<{
+          posts: BlogPost[];
+          total: number;
+          total_pages: number;
+        }>("/admin/blogs", { withCredentials: false });
+        const posts = result.posts;
+
+        const tableBody = document.getElementById("postsTableBody");
+        if (!tableBody) return;
+
+        tableBody.innerHTML = "";
+
+        if (posts.length === 0) {
+          tableBody.innerHTML = `
+            <tr>
+              <td colspan="5" class="text-center">No posts found</td>
+            </tr>
+          `;
+          return;
+        }
+
+        posts.forEach((post) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${post.title}</td>
+            <td>${post.author || "Anonymous"}</td>
+            <td>${post.category || "Uncategorized"}</td>
+            <td>${new Date(post.created_at).toLocaleDateString()}</td>
+            <td>
+              <button class="btn btn-sm btn-primary edit-post" data-id="${
+                post._id
+              }">Edit</button>
+              <button class="btn btn-sm btn-danger delete-post" data-id="${
+                post._id
+              }">Delete</button>
+            </td>
+          `;
+          tableBody.appendChild(row);
+        });
+
+        // Add event listeners to the edit and delete buttons
+        document.querySelectorAll(".edit-post").forEach((button) => {
+          button.addEventListener("click", async () => {
+            const postId = (button as HTMLElement).dataset.id;
+            if (postId) loadPostForEdit(postId);
+          });
+        });
+
+        document.querySelectorAll(".delete-post").forEach((button) => {
+          button.addEventListener("click", async () => {
+            const postId = (button as HTMLElement).dataset.id;
+            if (
+              postId &&
+              confirm("Are you sure you want to delete this post?")
+            ) {
+              try {
+                await apiRequest(`/admin/blogs/${postId}`, {
+                  method: "DELETE",
+                  withCredentials: false,
+                });
+                alert("Post deleted successfully!");
+                loadPosts(); // Reload the posts
+              } catch (error) {
+                console.error("Error deleting post:", error);
+                alert("Failed to delete post.");
+              }
+            }
+          });
+        });
+      } catch (error) {
+        console.error("Error loading posts:", error);
+        alert("Failed to load posts. Please check the console for details.");
+      }
+    };
+
+    // Load a post for editing
+    const loadPostForEdit = async (postId: string) => {
+      try {
+        const post = await apiRequest<BlogPost>(`/admin/blogs/${postId}`, {
+          withCredentials: false,
+        });
+
+        // Set the post ID in the hidden field
+        postIdField.value = post._id;
+        currentPostId = post._id;
+
+        // Populate the form fields
+        titleField.value = post.title;
+        taglineField.value = post.tagline || "";
+        authorField.value = post.author || "";
+        // Handle category - we would need to match the category ID
+
+        // Load HTML content into the editor
+        if (window.loadPostContent) {
+          window.loadPostContent(post.content);
+        }
+
+        // Switch to the edit tab
+        const editTab = document.getElementById("edit-tab");
+        if (editTab) {
+          (editTab as HTMLElement).click();
+        }
+      } catch (error) {
+        console.error("Error loading post for edit:", error);
+        alert("Failed to load post. Please check the console for details.");
+      }
+    };
+
+    // Handle form submission
+    if (postForm) {
+      postForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        // Get content from the hidden field that Quill populates
+        const contentInput = document.getElementById(
+          "postContent"
+        ) as HTMLInputElement;
+        const content = contentInput.value;
+
+        if (!titleField.value || !content) {
+          alert("Title and content are required!");
+          return;
+        }
+
+        const postData = {
+          title: titleField.value,
+          tagline: taglineField.value,
+          author: authorField.value,
+          content: content, // This is now HTML content
+          // Handle category, images, etc.
+        };
+
+        try {
+          if (currentPostId) {
+            // Update existing post
+            await apiRequest(`/admin/blogs/${currentPostId}`, {
+              method: "PUT",
+              body: postData,
+              withCredentials: false,
+            });
+            alert("Post updated successfully!");
+          } else {
+            // Create new post
+            await apiRequest("/admin/blogs", {
+              method: "POST",
+              body: postData,
+              withCredentials: false,
+            });
+            alert("Post created successfully!");
+          }
+
+          // Clear the form and reload posts
+          clearForm();
+          loadPosts();
+        } catch (error) {
+          console.error("Error saving post:", error);
+          alert("Failed to save post. Please check the console for details.");
+        }
+      });
+    }
+
+    // Clear the form
+    const clearForm = () => {
+      postForm.reset();
+      postIdField.value = "";
+      currentPostId = null;
+
+      // Clear the Quill editor
+      if (window.loadPostContent) {
+        window.loadPostContent("");
+      }
+    };
+
+    // Handle the clear form button
+    const clearFormBtn = document.getElementById("clearFormBtn");
+    if (clearFormBtn) {
+      clearFormBtn.addEventListener("click", clearForm);
+    }
+
+    // Handle the new post button
+    const newPostBtn = document.getElementById("newPostBtn");
+    if (newPostBtn) {
+      newPostBtn.addEventListener("click", () => {
+        clearForm();
+        const editTab = document.getElementById("edit-tab");
+        if (editTab) {
+          (editTab as HTMLElement).click();
+        }
+      });
+    }
+
+    // Initial load of posts
+    loadPosts();
+  });
+</script>

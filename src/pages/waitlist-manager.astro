@@ -1,0 +1,896 @@
+---
+import AdminLayout from "../layouts/AdminLayout.astro";
+import { apiRequest } from "../utils/api";
+
+// Define interfaces
+interface WaitlistUser {
+  id: string;
+  email: string;
+  name: string | null;
+  newsletter: boolean;
+  signup_date: string;
+}
+
+interface WaitlistData {
+  users: WaitlistUser[];
+  total: number;
+  total_pages: number;
+  page: number;
+  limit: number;
+}
+
+interface InviteResult {
+  sentCount: number;
+  successEmails: string[];
+}
+
+// Default empty state
+const defaultWaitlistData: WaitlistData = {
+  users: [],
+  total: 0,
+  total_pages: 0,
+  page: 1,
+  limit: 10,
+};
+
+// Try to fetch initial waitlist data
+let waitlistData: WaitlistData = defaultWaitlistData;
+try {
+  const response = await apiRequest<WaitlistData>("/admin/waitlist", {
+    withCredentials: false,
+  });
+  // Only update waitlistData if response has users array and other required properties
+  if (response && response.users) {
+    waitlistData = response;
+  }
+} catch (error) {
+  console.error("Error fetching waitlist data:", error);
+}
+---
+
+<AdminLayout title="Waitlist Manager" currentPage="waitlist-manager">
+  <div class="container">
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <h2>Waitlist Manager</h2>
+        <p class="text-muted">Manage users on the waitlist</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <button id="exportBtn" class="btn btn-outline-primary me-2">
+          <i class="fas fa-download me-2"></i>Export
+        </button>
+        <button id="inviteBtn" class="btn btn-primary">
+          <i class="fas fa-paper-plane me-2"></i>Send Invites
+        </button>
+      </div>
+    </div>
+
+    <!-- Filter Controls -->
+    <div class="waitlist-card mb-4">
+      <div class="waitlist-card-header">
+        <h5><i class="fas fa-filter me-2"></i>Filter Waitlist</h5>
+      </div>
+      <div class="waitlist-card-body">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label for="emailFilter" class="form-label">Email</label>
+            <input
+              type="text"
+              class="form-control"
+              id="emailFilter"
+              placeholder="Filter by email"
+            />
+          </div>
+          <div class="col-md-3">
+            <label for="nameFilter" class="form-label">Name</label>
+            <input
+              type="text"
+              class="form-control"
+              id="nameFilter"
+              placeholder="Filter by name"
+            />
+          </div>
+          <div class="col-md-2">
+            <label for="newsletterFilter" class="form-label">Newsletter</label>
+            <select class="form-select" id="newsletterFilter">
+              <option value="">All</option>
+              <option value="true">Subscribed</option>
+              <option value="false">Not Subscribed</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label for="dateFilter" class="form-label">Signup Date</label>
+            <input type="date" class="form-control" id="dateFilter" />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label d-block">&nbsp;</label>
+            <button id="applyFiltersBtn" class="btn btn-primary"
+              >Apply Filters</button
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Waitlist Table -->
+    <div class="waitlist-card">
+      <div
+        class="waitlist-card-header d-flex justify-content-between align-items-center"
+      >
+        <h5><i class="fas fa-list me-2"></i>Waitlist Users</h5>
+        <div class="d-flex align-items-center">
+          <div class="me-3">
+            <select id="limitSelect" class="form-select form-select-sm">
+              <option value="10">10 per page</option>
+              <option value="25">25 per page</option>
+              <option value="50">50 per page</option>
+              <option value="100">100 per page</option>
+            </select>
+          </div>
+          <div>
+            <span>Total: <span id="totalUsers">{waitlistData.total}</span></span
+            >
+          </div>
+        </div>
+      </div>
+      <div class="waitlist-card-body">
+        <div class="table-responsive">
+          <table class="table table-dark">
+            <thead>
+              <tr>
+                <th>
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="selectAllCheckbox"
+                    />
+                    <label class="form-check-label" for="selectAllCheckbox"
+                    ></label>
+                  </div>
+                </th>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Signed Up</th>
+                <th>Newsletter</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="waitlistTableBody">
+              {
+                waitlistData.users.length > 0 ? (
+                  waitlistData.users.map((user) => (
+                    <tr data-user-id={user.id}>
+                      <td>
+                        <div class="form-check">
+                          <input
+                            class="form-check-input user-checkbox"
+                            type="checkbox"
+                            value={user.id}
+                          />
+                        </div>
+                      </td>
+                      <td>{user.email}</td>
+                      <td>{user.name || "-"}</td>
+                      <td>{new Date(user.signup_date).toLocaleDateString()}</td>
+                      <td>
+                        <span
+                          class={`badge ${user.newsletter ? "bg-success" : "bg-secondary"}`}
+                        >
+                          {user.newsletter ? "Yes" : "No"}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          class="btn btn-sm btn-outline-primary edit-user-btn"
+                          data-user-id={user.id}
+                        >
+                          <i class="fas fa-edit" />
+                        </button>
+                        <button
+                          class="btn btn-sm btn-outline-danger delete-user-btn"
+                          data-user-id={user.id}
+                        >
+                          <i class="fas fa-trash-alt" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colspan="6" class="text-center">
+                      No users found
+                    </td>
+                  </tr>
+                )
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="waitlist-card-footer">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <button
+              id="prevPageBtn"
+              class="btn btn-sm btn-outline-primary"
+              disabled={waitlistData.page <= 1}
+            >
+              <i class="fas fa-chevron-left me-1"></i>Previous
+            </button>
+            <button
+              id="nextPageBtn"
+              class="btn btn-sm btn-outline-primary ms-2"
+              disabled={waitlistData.page >= waitlistData.total_pages}
+            >
+              Next<i class="fas fa-chevron-right ms-1"></i>
+            </button>
+          </div>
+          <div>
+            Page <span id="currentPage">{waitlistData.page}</span> of
+            <span id="totalPages">{waitlistData.total_pages}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+          <div class="modal-header">
+            <h5 class="modal-title">Edit User</h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+              aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="editUserForm">
+              <input type="hidden" id="editUserId" />
+              <div class="mb-3">
+                <label for="editUserEmail" class="form-label">Email</label>
+                <input
+                  type="email"
+                  class="form-control"
+                  id="editUserEmail"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label for="editUserName" class="form-label">Name</label>
+                <input type="text" class="form-control" id="editUserName" />
+              </div>
+              <div class="mb-3 form-check">
+                <input
+                  type="checkbox"
+                  class="form-check-input"
+                  id="editUserNewsletter"
+                />
+                <label class="form-check-label" for="editUserNewsletter"
+                  >Subscribed to Newsletter</label
+                >
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-bs-dismiss="modal">Cancel</button
+            >
+            <button type="button" class="btn btn-primary" id="saveUserBtn"
+              >Save Changes</button
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Send Invites Modal -->
+    <div
+      class="modal fade"
+      id="sendInvitesModal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+          <div class="modal-header">
+            <h5 class="modal-title">Send Invites</h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+              aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Select how many users you want to invite:</p>
+
+            <div class="mb-3">
+              <label for="inviteCount" class="form-label"
+                >Number of invites</label
+              >
+              <input
+                type="number"
+                class="form-control"
+                id="inviteCount"
+                min="1"
+                max="100"
+                value="10"
+              />
+              <div class="form-text">Maximum 100 at once</div>
+            </div>
+
+            <div class="mb-3">
+              <label for="inviteMethod" class="form-label">Invite method</label>
+              <select class="form-select" id="inviteMethod">
+                <option value="oldest">Oldest signups first</option>
+                <option value="newest">Newest signups first</option>
+                <option value="random">Random selection</option>
+                <option value="selected">Selected users only</option>
+              </select>
+            </div>
+
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle me-2"></i>
+              Selected: <span id="selectedCount">0</span> users
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-bs-dismiss="modal">Cancel</button
+            >
+            <button type="button" class="btn btn-primary" id="sendInvitesBtn"
+              >Send Invites</button
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .waitlist-card {
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+
+  .waitlist-card-header {
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #333;
+  }
+
+  .waitlist-card-body {
+    padding: 1.5rem;
+  }
+
+  .waitlist-card-footer {
+    padding: 1rem 1.5rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid #333;
+  }
+
+  .badge {
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+  }
+
+  .form-control,
+  .form-select {
+    background-color: #212529;
+    border-color: #495057;
+    color: #e9ecef;
+  }
+
+  .form-control:focus,
+  .form-select:focus {
+    background-color: #2c3034;
+    color: #e9ecef;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.25rem rgba(255, 243, 0, 0.25);
+  }
+
+  .modal-content {
+    border: 1px solid #333;
+  }
+</style>
+
+<script>
+  import { apiRequest } from "../utils/api";
+
+  // Use type assertion for Bootstrap to fix TypeScript errors
+  const bootstrap = window.bootstrap as any;
+
+  // TypeScript interfaces
+  interface WaitlistUser {
+    id: string;
+    email: string;
+    name: string | null;
+    newsletter: boolean;
+    signup_date: string;
+  }
+
+  interface WaitlistData {
+    users: WaitlistUser[];
+    total: number;
+    total_pages: number;
+    page: number;
+    limit: number;
+  }
+
+  interface InviteResult {
+    sentCount: number;
+    successEmails: string[];
+  }
+
+  // Current filters and pagination state
+  let currentFilters = {
+    email: "",
+    name: "",
+    newsletter: "",
+    date: "",
+  };
+
+  let currentPage = 1;
+  let itemsPerPage = 10;
+  let selectedUserIds: string[] = [];
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // Initialize the UI elements
+    initEventListeners();
+
+    // Initial data load happens server-side
+    updatePaginationUI();
+
+    // Fetch fresh data on page load to ensure we have the latest
+    fetchWaitlistData();
+  });
+
+  function initEventListeners() {
+    // Filter application
+    document
+      .getElementById("applyFiltersBtn")
+      ?.addEventListener("click", () => {
+        applyFilters();
+      });
+
+    // Pagination
+    document.getElementById("prevPageBtn")?.addEventListener("click", () => {
+      if (currentPage > 1) {
+        currentPage--;
+        fetchWaitlistData();
+      }
+    });
+
+    document.getElementById("nextPageBtn")?.addEventListener("click", () => {
+      currentPage++;
+      fetchWaitlistData();
+    });
+
+    // Items per page
+    document.getElementById("limitSelect")?.addEventListener("change", (e) => {
+      const target = e.target as HTMLSelectElement;
+      itemsPerPage = parseInt(target.value);
+      currentPage = 1; // Reset to first page
+      fetchWaitlistData();
+    });
+
+    // Select all checkbox
+    document
+      .getElementById("selectAllCheckbox")
+      ?.addEventListener("change", (e) => {
+        const target = e.target as HTMLInputElement;
+        const checkboxes = document.querySelectorAll(
+          ".user-checkbox"
+        ) as NodeListOf<HTMLInputElement>;
+        checkboxes.forEach((checkbox) => {
+          checkbox.checked = target.checked;
+        });
+        updateSelectedUserIds();
+      });
+
+    // Send invites button
+    document.getElementById("inviteBtn")?.addEventListener("click", () => {
+      updateSelectedCount();
+      const modalEl = document.getElementById("sendInvitesModal");
+      if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      }
+    });
+
+    // Send invites in modal
+    document.getElementById("sendInvitesBtn")?.addEventListener("click", () => {
+      sendInvites();
+    });
+
+    // Export button
+    document.getElementById("exportBtn")?.addEventListener("click", () => {
+      exportWaitlist();
+    });
+
+    // Edit user buttons (delegated)
+    document.addEventListener("click", (e) => {
+      const target = e.target as HTMLElement;
+      if (target.closest(".edit-user-btn")) {
+        const button = target.closest(".edit-user-btn") as HTMLElement;
+        const userId = button.getAttribute("data-user-id");
+        if (userId) openEditUserModal(userId);
+      } else if (target.closest(".delete-user-btn")) {
+        const button = target.closest(".delete-user-btn") as HTMLElement;
+        const userId = button.getAttribute("data-user-id");
+        if (userId) confirmDeleteUser(userId);
+      }
+    });
+
+    // User checkboxes
+    document.addEventListener("change", (e) => {
+      const target = e.target as HTMLElement;
+      if (target.classList.contains("user-checkbox")) {
+        updateSelectedUserIds();
+      }
+    });
+
+    // Save user changes
+    document.getElementById("saveUserBtn")?.addEventListener("click", () => {
+      saveUserChanges();
+    });
+  }
+
+  function updateSelectedUserIds() {
+    selectedUserIds = [];
+    const checkboxes = document.querySelectorAll(
+      ".user-checkbox:checked"
+    ) as NodeListOf<HTMLInputElement>;
+    checkboxes.forEach((checkbox) => {
+      selectedUserIds.push(checkbox.value);
+    });
+    updateSelectedCount();
+  }
+
+  function updateSelectedCount() {
+    const selectedCountElement = document.getElementById("selectedCount");
+    if (selectedCountElement) {
+      selectedCountElement.textContent = selectedUserIds.length.toString();
+    }
+  }
+
+  async function applyFilters() {
+    // Get filter values
+    const emailFilter =
+      (document.getElementById("emailFilter") as HTMLInputElement)?.value || "";
+    const nameFilter =
+      (document.getElementById("nameFilter") as HTMLInputElement)?.value || "";
+    const newsletterFilter =
+      (document.getElementById("newsletterFilter") as HTMLSelectElement)
+        ?.value || "";
+    const dateFilter =
+      (document.getElementById("dateFilter") as HTMLInputElement)?.value || "";
+
+    // Update current filters
+    currentFilters = {
+      email: emailFilter,
+      name: nameFilter,
+      newsletter: newsletterFilter,
+      date: dateFilter,
+    };
+
+    // Reset to first page
+    currentPage = 1;
+
+    // Fetch filtered data
+    await fetchWaitlistData();
+  }
+
+  async function fetchWaitlistData() {
+    try {
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+      });
+
+      // Add filters if they exist
+      if (currentFilters.email) params.append("email", currentFilters.email);
+      if (currentFilters.name) params.append("name", currentFilters.name);
+      if (currentFilters.newsletter)
+        params.append("newsletter", currentFilters.newsletter);
+      if (currentFilters.date) params.append("date", currentFilters.date);
+
+      // Make API request
+      const queryString = params.toString();
+      const endpoint = `/admin/waitlist${queryString ? `?${queryString}` : ""}`;
+      const data = await apiRequest<WaitlistData>(endpoint);
+
+      // Update the UI
+      updateWaitlistTable(data);
+      updatePaginationUI(data);
+    } catch (error) {
+      console.error("Error fetching waitlist data:", error);
+      alert("Failed to fetch waitlist data. Please try again.");
+    }
+  }
+
+  function updateWaitlistTable(data: WaitlistData) {
+    const tableBody = document.getElementById("waitlistTableBody");
+    if (!tableBody) return;
+
+    // Update total count
+    const totalElement = document.getElementById("totalUsers");
+    if (totalElement) {
+      totalElement.textContent = data.total.toString();
+    }
+
+    // Clear existing rows
+    tableBody.innerHTML = "";
+
+    // No users case
+    if (data.users.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="text-center">No users found</td>
+        </tr>
+      `;
+      return;
+    }
+
+    // Add rows for each user
+    data.users.forEach((user) => {
+      const row = document.createElement("tr");
+      row.setAttribute("data-user-id", user.id);
+
+      row.innerHTML = `
+        <td>
+          <div class="form-check">
+            <input class="form-check-input user-checkbox" type="checkbox" value="${user.id}">
+          </div>
+        </td>
+        <td>${user.email}</td>
+        <td>${user.name || "-"}</td>
+        <td>${new Date(user.signup_date).toLocaleDateString()}</td>
+        <td>
+          <span class="badge ${user.newsletter ? "bg-success" : "bg-secondary"}">
+            ${user.newsletter ? "Yes" : "No"}
+          </span>
+        </td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary edit-user-btn" data-user-id="${user.id}">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger delete-user-btn" data-user-id="${user.id}">
+            <i class="fas fa-trash-alt"></i>
+          </button>
+        </td>
+      `;
+
+      tableBody.appendChild(row);
+    });
+  }
+
+  function updatePaginationUI(data?: WaitlistData) {
+    // If data is provided, update page info
+    if (data) {
+      const currentPageEl = document.getElementById("currentPage");
+      const totalPagesEl = document.getElementById("totalPages");
+
+      if (currentPageEl) currentPageEl.textContent = data.page.toString();
+      if (totalPagesEl) totalPagesEl.textContent = data.total_pages.toString();
+
+      // Update pagination buttons state
+      const prevBtn = document.getElementById(
+        "prevPageBtn"
+      ) as HTMLButtonElement;
+      const nextBtn = document.getElementById(
+        "nextPageBtn"
+      ) as HTMLButtonElement;
+
+      if (prevBtn) prevBtn.disabled = data.page <= 1;
+      if (nextBtn) nextBtn.disabled = data.page >= data.total_pages;
+    }
+  }
+
+  async function openEditUserModal(userId: string) {
+    try {
+      // Fetch user details
+      const user = await apiRequest<WaitlistUser>(`/admin/waitlist/${userId}`);
+
+      // Fill form
+      const idInput = document.getElementById("editUserId") as HTMLInputElement;
+      const emailInput = document.getElementById(
+        "editUserEmail"
+      ) as HTMLInputElement;
+      const nameInput = document.getElementById(
+        "editUserName"
+      ) as HTMLInputElement;
+      const newsletterInput = document.getElementById(
+        "editUserNewsletter"
+      ) as HTMLInputElement;
+
+      if (idInput) idInput.value = user.id;
+      if (emailInput) emailInput.value = user.email;
+      if (nameInput) nameInput.value = user.name || "";
+      if (newsletterInput) newsletterInput.checked = user.newsletter;
+
+      // Show modal
+      const modalEl = document.getElementById("editUserModal");
+      if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      }
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+      alert("Failed to load user details. Please try again.");
+    }
+  }
+
+  async function saveUserChanges() {
+    try {
+      const idInput = document.getElementById("editUserId") as HTMLInputElement;
+      const emailInput = document.getElementById(
+        "editUserEmail"
+      ) as HTMLInputElement;
+      const nameInput = document.getElementById(
+        "editUserName"
+      ) as HTMLInputElement;
+      const newsletterInput = document.getElementById(
+        "editUserNewsletter"
+      ) as HTMLInputElement;
+
+      if (!idInput || !emailInput) return;
+
+      const userId = idInput.value;
+      const userData = {
+        email: emailInput.value,
+        name: nameInput?.value || null,
+        newsletter: newsletterInput?.checked || false,
+      };
+
+      // Update user
+      await apiRequest(`/admin/waitlist/${userId}`, {
+        method: "PUT",
+        body: userData,
+      });
+
+      // Close modal
+      const modalEl = document.getElementById("editUserModal");
+      if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+      }
+
+      // Refresh data
+      await fetchWaitlistData();
+
+      // Show success message
+      alert("User updated successfully");
+    } catch (error) {
+      console.error("Error updating user:", error);
+      alert("Failed to update user. Please try again.");
+    }
+  }
+
+  async function confirmDeleteUser(userId: string) {
+    if (
+      confirm(
+        "Are you sure you want to delete this user? This cannot be undone."
+      )
+    ) {
+      try {
+        await apiRequest(`/admin/waitlist/${userId}`, {
+          method: "DELETE",
+        });
+
+        // Refresh data
+        await fetchWaitlistData();
+
+        // Show success message
+        alert("User deleted successfully");
+      } catch (error) {
+        console.error("Error deleting user:", error);
+        alert("Failed to delete user. Please try again.");
+      }
+    }
+  }
+
+  async function sendInvites() {
+    try {
+      const inviteCount = parseInt(
+        (document.getElementById("inviteCount") as HTMLInputElement)?.value ||
+          "10"
+      );
+      const inviteMethod =
+        (document.getElementById("inviteMethod") as HTMLSelectElement)?.value ||
+        "oldest";
+
+      const payload = {
+        count: inviteCount,
+        method: inviteMethod,
+        selectedUserIds: inviteMethod === "selected" ? selectedUserIds : [],
+      };
+
+      // Send invites
+      const result = await apiRequest<InviteResult>(
+        "/admin/waitlist/send-invites",
+        {
+          method: "POST",
+          body: payload,
+        }
+      );
+
+      // Close modal
+      const modalEl = document.getElementById("sendInvitesModal");
+      if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+      }
+
+      // Show success message
+      alert(`Successfully sent ${result.sentCount} invites.`);
+
+      // Refresh data
+      await fetchWaitlistData();
+    } catch (error) {
+      console.error("Error sending invites:", error);
+      alert("Failed to send invites. Please try again.");
+    }
+  }
+
+  async function exportWaitlist() {
+    try {
+      // Build query parameters with current filters
+      const params = new URLSearchParams();
+
+      if (currentFilters.email) params.append("email", currentFilters.email);
+      if (currentFilters.name) params.append("name", currentFilters.name);
+      if (currentFilters.newsletter)
+        params.append("newsletter", currentFilters.newsletter);
+      if (currentFilters.date) params.append("date", currentFilters.date);
+
+      // Make API request
+      const queryString = params.toString();
+      const endpoint = `/admin/waitlist/export${queryString ? `?${queryString}` : ""}`;
+      const data = await apiRequest<WaitlistUser[]>(endpoint);
+
+      // Convert to CSV
+      const headers = ["ID", "Email", "Name", "Newsletter", "Signup Date"];
+      const csvContent = [
+        headers.join(","),
+        ...data.map((user) =>
+          [
+            user.id,
+            `"${user.email}"`,
+            `"${user.name || ""}"`,
+            user.newsletter ? "Yes" : "No",
+            new Date(user.signup_date).toLocaleDateString(),
+          ].join(",")
+        ),
+      ].join("\n");
+
+      // Download CSV
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `waitlist-export-${new Date().toISOString().split("T")[0]}.csv`
+      );
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Error exporting waitlist:", error);
+      alert("Failed to export waitlist. Please try again.");
+    }
+  }
+</script>

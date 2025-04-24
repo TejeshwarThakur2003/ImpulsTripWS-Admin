@@ -1,0 +1,29 @@
+---
+// Header.astro - Common header component for all dashboard pages
+import { getUserData } from "../utils/auth";
+
+const userData = getUserData();
+const username = userData?.name || "Admin";
+---
+
+<header class="header-branding">
+  <div class="header-left">
+    <img src="/img/favicon.png" alt="ImpulsTrip Logo" class="logo-img" />
+    <h1>ImpulsTrip Admin</h1>
+  </div>
+  <div class="user-profile">
+    <div class="user-avatar">
+      <i class="fas fa-user"></i>
+    </div>
+    <div class="user-info">
+      <span id="currentUser">{username}</span>
+      <a
+        href="/login"
+        id="logoutBtn"
+        class="btn btn-sm btn-outline-primary ms-3"
+      >
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </a>
+    </div>
+  </div>
+</header>

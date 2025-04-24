@@ -1,0 +1,723 @@
+---
+import AdminLayout from "../layouts/AdminLayout.astro";
+import { apiRequest } from "../utils/api";
+
+// Define interfaces
+interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  created_at: string;
+}
+
+interface ContactData {
+  messages: ContactMessage[];
+  total: number;
+  total_pages: number;
+  page: number;
+  limit: number;
+}
+
+// Default empty state
+const defaultContactData: ContactData = {
+  messages: [],
+  total: 0,
+  total_pages: 0,
+  page: 1,
+  limit: 10,
+};
+
+// Try to fetch initial contact data
+let contactData: ContactData = defaultContactData;
+try {
+  const response = await apiRequest<ContactData>("/admin/contacts");
+  // Only update contactData if response has messages array and other required properties
+  if (response && response.messages) {
+    contactData = response;
+  }
+} catch (error) {
+  console.error("Error fetching contact messages:", error);
+}
+---
+
+<AdminLayout title="Contact Messages" currentPage="contact-messages">
+  <div class="container">
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <h2>Contact Messages</h2>
+        <p class="text-muted">
+          Manage messages received through the contact form
+        </p>
+      </div>
+      <div class="col-md-4 text-end">
+        <button id="exportBtn" class="btn btn-outline-primary">
+          <i class="fas fa-download me-2"></i>Export
+        </button>
+      </div>
+    </div>
+
+    <!-- Filter Controls -->
+    <div class="contact-card mb-4">
+      <div class="contact-card-header">
+        <h5><i class="fas fa-filter me-2"></i>Filter Messages</h5>
+      </div>
+      <div class="contact-card-body">
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label for="emailFilter" class="form-label">Email</label>
+            <input
+              type="text"
+              class="form-control"
+              id="emailFilter"
+              placeholder="Search by email"
+            />
+          </div>
+          <div class="col-md-4 mb-3">
+            <label for="nameFilter" class="form-label">Name</label>
+            <input
+              type="text"
+              class="form-control"
+              id="nameFilter"
+              placeholder="Search by name"
+            />
+          </div>
+          <div class="col-md-4 mb-3">
+            <label for="dateFilter" class="form-label">Date</label>
+            <input type="date" class="form-control" id="dateFilter" />
+          </div>
+        </div>
+        <div class="row mt-2">
+          <div class="col-12 text-end">
+            <button id="clearFiltersBtn" class="btn btn-outline-secondary me-2">
+              <i class="fas fa-eraser me-2"></i>Clear Filters
+            </button>
+            <button id="applyFiltersBtn" class="btn btn-primary">
+              <i class="fas fa-search me-2"></i>Apply Filters
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages List -->
+    <div class="contact-card">
+      <div
+        class="contact-card-header d-flex justify-content-between align-items-center"
+      >
+        <h5><i class="fas fa-envelope me-2"></i>Messages</h5>
+        <div class="d-flex align-items-center">
+          <div class="me-3">
+            <select id="limitSelect" class="form-select form-select-sm">
+              <option value="10">10 per page</option>
+              <option value="25">25 per page</option>
+              <option value="50">50 per page</option>
+              <option value="100">100 per page</option>
+            </select>
+          </div>
+          <div>
+            <span
+              >Total: <span id="totalMessages">{contactData.total}</span></span
+            >
+          </div>
+        </div>
+      </div>
+      <div class="contact-card-body">
+        <div class="table-responsive">
+          <table class="table table-dark table-hover contact-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Message</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="contactTableBody">
+              {
+                contactData.messages.map((message) => (
+                  <tr data-id={message.id}>
+                    <td>{message.name}</td>
+                    <td>
+                      <a href={`mailto:${message.email}`}>{message.email}</a>
+                    </td>
+                    <td>
+                      {message.message.length > 50
+                        ? `${message.message.substring(0, 50)}...`
+                        : message.message}
+                    </td>
+                    <td>{new Date(message.created_at).toLocaleDateString()}</td>
+                    <td>
+                      <button
+                        class="btn btn-sm btn-outline-primary view-btn"
+                        data-id={message.id}
+                      >
+                        <i class="fas fa-eye" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Empty State -->
+        {
+          contactData.messages.length === 0 && (
+            <div class="text-center py-5">
+              <div class="display-6 text-muted mb-3">
+                <i class="fas fa-inbox" />
+              </div>
+              <h4>No messages found</h4>
+              <p class="text-muted">
+                {contactData.total === 0
+                  ? "You haven't received any contact messages yet."
+                  : "No messages match your current filters."}
+              </p>
+            </div>
+          )
+        }
+
+        <!-- Pagination -->
+        <div class="d-flex justify-content-between align-items-center mt-4">
+          <div>
+            <span class="text-muted" id="paginationInfo">
+              Showing{" "}
+              <span id="showingFrom">
+                {
+                  contactData.messages.length
+                    ? (contactData.page - 1) * contactData.limit + 1
+                    : 0
+                }
+              </span>{" "}
+              to{" "}
+              <span id="showingTo">
+                {
+                  Math.min(
+                    contactData.page * contactData.limit,
+                    contactData.total
+                  )
+                }
+              </span>{" "}
+              of <span id="showingTotal">{contactData.total}</span> messages
+            </span>
+          </div>
+
+          <nav aria-label="Contact message pagination">
+            <ul class="pagination" id="pagination">
+              <li
+                class={`page-item ${contactData.page <= 1 ? "disabled" : ""}`}
+              >
+                <a class="page-link" href="#" id="prevPage"> Previous </a>
+              </li>
+              <!-- Page numbers will be dynamically inserted here -->
+              <li
+                class={`page-item ${
+                  contactData.page >= contactData.total_pages ? "disabled" : ""
+                }`}
+              >
+                <a class="page-link" href="#" id="nextPage"> Next </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Message View Modal -->
+  <div
+    class="modal fade"
+    id="viewMessageModal"
+    tabindex="-1"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog">
+      <div class="modal-content bg-dark text-light">
+        <div class="modal-header">
+          <h5 class="modal-title">Contact Message</h5>
+          <button
+            type="button"
+            class="btn-close btn-close-white"
+            data-bs-dismiss="modal"
+            aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-bold">From:</label>
+            <div id="modalName"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Email:</label>
+            <div>
+              <a href="#" id="modalEmail"></a>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Date:</label>
+            <div id="modalDate"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Message:</label>
+            <div class="p-3 bg-black rounded" id="modalMessage"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            data-bs-dismiss="modal">Close</button
+          >
+          <a href="#" class="btn btn-primary" id="replyBtn">
+            <i class="fas fa-reply me-2"></i>Reply
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  /* Contact card styles */
+  .contact-card {
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+
+  .contact-card-header {
+    background-color: rgba(0, 0, 0, 0.3);
+    color: var(--primary);
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #333;
+  }
+
+  .contact-card-body {
+    padding: 1.5rem;
+  }
+
+  /* Table styles */
+  .contact-table {
+    border-color: #333;
+  }
+
+  .contact-table th {
+    border-bottom-color: #444;
+    color: var(--gray-light);
+  }
+
+  .contact-table td {
+    border-bottom-color: #333;
+    vertical-align: middle;
+  }
+
+  /* Pagination styles */
+  .pagination .page-link {
+    background-color: #222;
+    border-color: #333;
+    color: var(--light);
+  }
+
+  .pagination .page-link:hover {
+    background-color: #333;
+    border-color: #444;
+    color: var(--primary);
+  }
+
+  .pagination .page-item.active .page-link {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: #000;
+  }
+
+  .pagination .page-item.disabled .page-link {
+    background-color: #222;
+    border-color: #333;
+    color: #666;
+  }
+</style>
+
+<script>
+  import { apiRequest } from "../utils/api";
+
+  // Use type assertion for Bootstrap to fix TypeScript errors
+  const bootstrap = window.bootstrap as any;
+
+  // TypeScript interfaces
+  interface ContactMessage {
+    id: string;
+    name: string;
+    email: string;
+    message: string;
+    created_at: string;
+  }
+
+  interface ContactData {
+    messages: ContactMessage[];
+    total: number;
+    total_pages: number;
+    page: number;
+    limit: number;
+  }
+
+  // Current filters and pagination state
+  let currentFilters = {
+    email: "",
+    name: "",
+    date: "",
+  };
+
+  let currentPage = 1;
+  let itemsPerPage = 10;
+  let totalPages = 1;
+  let currentMessage: ContactMessage | null = null;
+  let viewModal: any = null;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // Initialize the UI elements
+    initEventListeners();
+
+    // Initialize Bootstrap modal
+    viewModal = new bootstrap.Modal(
+      document.getElementById("viewMessageModal")
+    );
+
+    // Initial data load happens server-side
+    updatePaginationUI();
+
+    // Fetch fresh data on page load to ensure we have the latest
+    fetchContactData();
+  });
+
+  function initEventListeners() {
+    // Apply filters
+    document
+      .getElementById("applyFiltersBtn")
+      ?.addEventListener("click", function () {
+        applyFilters();
+      });
+
+    // Clear filters
+    document
+      .getElementById("clearFiltersBtn")
+      ?.addEventListener("click", function () {
+        clearFilters();
+      });
+
+    // Page size select
+    document
+      .getElementById("limitSelect")
+      ?.addEventListener("change", function (e) {
+        const target = e.target as HTMLSelectElement;
+        itemsPerPage = parseInt(target.value);
+        currentPage = 1;
+        fetchContactData();
+      });
+
+    // Pagination
+    document
+      .getElementById("prevPage")
+      ?.addEventListener("click", function (e) {
+        e.preventDefault();
+        if (currentPage > 1) {
+          currentPage--;
+          fetchContactData();
+        }
+      });
+
+    document
+      .getElementById("nextPage")
+      ?.addEventListener("click", function (e) {
+        e.preventDefault();
+        if (currentPage < totalPages) {
+          currentPage++;
+          fetchContactData();
+        }
+      });
+
+    // Export button
+    document
+      .getElementById("exportBtn")
+      ?.addEventListener("click", function () {
+        exportContactMessages();
+      });
+
+    // Set up dynamic event listeners for view buttons
+    document.addEventListener("click", function (e) {
+      const target = e.target as HTMLElement;
+
+      // Check if the click was on a view button or its icon
+      const viewBtn = target.closest(".view-btn");
+      if (viewBtn) {
+        const id = viewBtn.getAttribute("data-id");
+        if (id) {
+          openMessageModal(id);
+        }
+      }
+    });
+
+    // Reply button in modal
+    document
+      .getElementById("replyBtn")
+      ?.addEventListener("click", function (e) {
+        e.preventDefault();
+        if (currentMessage) {
+          window.location.href = `mailto:${currentMessage.email}?subject=Re: Your message to ImpulsTrip`;
+        }
+      });
+  }
+
+  async function applyFilters() {
+    // Get filter values
+    const emailFilter =
+      (document.getElementById("emailFilter") as HTMLInputElement)?.value || "";
+    const nameFilter =
+      (document.getElementById("nameFilter") as HTMLInputElement)?.value || "";
+    const dateFilter =
+      (document.getElementById("dateFilter") as HTMLInputElement)?.value || "";
+
+    // Update current filters
+    currentFilters = {
+      email: emailFilter,
+      name: nameFilter,
+      date: dateFilter,
+    };
+
+    // Reset to first page
+    currentPage = 1;
+
+    // Fetch filtered data
+    await fetchContactData();
+  }
+
+  function clearFilters() {
+    // Clear input values
+    (document.getElementById("emailFilter") as HTMLInputElement).value = "";
+    (document.getElementById("nameFilter") as HTMLInputElement).value = "";
+    (document.getElementById("dateFilter") as HTMLInputElement).value = "";
+
+    // Reset filters object
+    currentFilters = {
+      email: "",
+      name: "",
+      date: "",
+    };
+
+    // Reset to first page
+    currentPage = 1;
+
+    // Fetch all data
+    fetchContactData();
+  }
+
+  async function fetchContactData() {
+    try {
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+      });
+
+      // Add filters if they exist
+      if (currentFilters.email) params.append("email", currentFilters.email);
+      if (currentFilters.name) params.append("name", currentFilters.name);
+      if (currentFilters.date) params.append("date", currentFilters.date);
+
+      // Make API request
+      const queryString = params.toString();
+      const endpoint = `/admin/contacts${queryString ? `?${queryString}` : ""}`;
+      const data = await apiRequest<ContactData>(endpoint);
+
+      // Update the UI
+      updateContactTable(data);
+      updatePaginationUI(data);
+    } catch (error) {
+      console.error("Error fetching contact data:", error);
+      alert("Failed to fetch contact data. Please try again.");
+    }
+  }
+
+  function updateContactTable(data: ContactData) {
+    const tableBody = document.getElementById("contactTableBody");
+    if (!tableBody) return;
+
+    // Clear existing rows
+    tableBody.innerHTML = "";
+
+    // If no messages, show empty message
+    if (data.messages.length === 0) {
+      const emptyState = document.querySelector(".text-center.py-5");
+      if (emptyState) {
+        emptyState.classList.remove("d-none");
+        const reason = document.querySelector(".text-center.py-5 p");
+        if (reason) {
+          reason.textContent =
+            data.total === 0
+              ? "You haven't received any contact messages yet."
+              : "No messages match your current filters.";
+        }
+      }
+      return;
+    }
+
+    // Hide empty state if present
+    const emptyState = document.querySelector(".text-center.py-5");
+    if (emptyState) {
+      emptyState.classList.add("d-none");
+    }
+
+    // Create table rows
+    data.messages.forEach((message) => {
+      const row = document.createElement("tr");
+      row.setAttribute("data-id", message.id);
+
+      // Message content columns
+      row.innerHTML = `
+        <td>${message.name}</td>
+        <td><a href="mailto:${message.email}">${message.email}</a></td>
+        <td>${message.message.length > 50 ? message.message.substring(0, 50) + "..." : message.message}</td>
+        <td>${new Date(message.created_at).toLocaleDateString()}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary view-btn" data-id="${message.id}">
+            <i class="fas fa-eye"></i>
+          </button>
+        </td>
+      `;
+
+      tableBody.appendChild(row);
+    });
+  }
+
+  function updatePaginationUI(data?: ContactData) {
+    if (data) {
+      // Update pagination info
+      document.getElementById("showingFrom")!.textContent = data.messages.length
+        ? ((data.page - 1) * data.limit + 1).toString()
+        : "0";
+      document.getElementById("showingTo")!.textContent = Math.min(
+        data.page * data.limit,
+        data.total
+      ).toString();
+      document.getElementById("showingTotal")!.textContent =
+        data.total.toString();
+      document.getElementById("totalMessages")!.textContent =
+        data.total.toString();
+
+      // Update pagination controls state
+      const prevBtn = document.getElementById("prevPage")!.parentElement!;
+      prevBtn.classList.toggle("disabled", data.page <= 1);
+
+      const nextBtn = document.getElementById("nextPage")!.parentElement!;
+      nextBtn.classList.toggle("disabled", data.page >= data.total_pages);
+
+      // Store total pages for navigation
+      totalPages = data.total_pages;
+
+      // Update page number buttons
+      updatePageNumbers(data.page, data.total_pages);
+    }
+  }
+
+  function updatePageNumbers(currentPage: number, totalPages: number) {
+    // Get pagination element
+    const pagination = document.getElementById("pagination");
+    if (!pagination) return;
+
+    // Remove all existing page number items
+    const pageItems = pagination.querySelectorAll(
+      "li:not(:first-child):not(:last-child)"
+    );
+    pageItems.forEach((item) => item.remove());
+
+    // Calculate range of pages to show
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+
+    // Adjust if we're near the end
+    if (endPage - startPage < 4 && startPage > 1) {
+      startPage = Math.max(1, endPage - 4);
+    }
+
+    // Get reference elements
+    const prevBtn = pagination.querySelector("li:first-child");
+    const nextBtn = pagination.querySelector("li:last-child");
+
+    // Add page numbers
+    for (let i = startPage; i <= endPage; i++) {
+      const li = document.createElement("li");
+      li.className = `page-item ${i === currentPage ? "active" : ""}`;
+
+      const a = document.createElement("a");
+      a.className = "page-link";
+      a.href = "#";
+      a.textContent = i.toString();
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        currentPage = i;
+        fetchContactData();
+      });
+
+      li.appendChild(a);
+
+      // Insert before the next button
+      pagination.insertBefore(li, nextBtn);
+    }
+  }
+
+  async function openMessageModal(id: string) {
+    try {
+      // Fetch message details
+      const message = await apiRequest<ContactMessage>(`/admin/contacts/${id}`);
+
+      if (!message) {
+        throw new Error("Failed to load message details");
+      }
+
+      // Store current message
+      currentMessage = message;
+
+      // Populate modal
+      document.getElementById("modalName")!.textContent = message.name;
+
+      const emailElement = document.getElementById("modalEmail")!;
+      emailElement.textContent = message.email;
+      emailElement.setAttribute("href", `mailto:${message.email}`);
+
+      document.getElementById("modalDate")!.textContent = new Date(
+        message.created_at
+      ).toLocaleString();
+      document.getElementById("modalMessage")!.textContent = message.message;
+
+      // Show modal
+      viewModal.show();
+    } catch (error) {
+      console.error("Error loading message details:", error);
+      alert("Failed to load message details. Please try again.");
+    }
+  }
+
+  function exportContactMessages() {
+    try {
+      // Build query parameters including current filters
+      const params = new URLSearchParams();
+
+      if (currentFilters.email) params.append("email", currentFilters.email);
+      if (currentFilters.name) params.append("name", currentFilters.name);
+      if (currentFilters.date) params.append("date", currentFilters.date);
+
+      // Create download URL with query parameters
+      const queryString = params.toString();
+      const downloadUrl = `/admin/contacts/export${queryString ? `?${queryString}` : ""}`;
+
+      // Redirect to download URL
+      window.location.href = downloadUrl;
+    } catch (error) {
+      console.error("Error exporting contact messages:", error);
+      alert("Failed to export contact messages. Please try again.");
+    }
+  }
+</script>

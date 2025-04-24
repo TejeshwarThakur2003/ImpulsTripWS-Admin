@@ -1,0 +1,50 @@
+---
+// Navigation.astro - Common navigation component for all dashboard pages
+
+interface Props {
+  currentPage: string;
+}
+
+const { currentPage } = Astro.props;
+---
+
+<nav class="mb-4">
+  <div class="d-flex flex-wrap gap-2">
+    <a
+      href="/dashboard"
+      class={`btn ${currentPage === "dashboard" ? "btn-primary" : "btn-outline-primary"}`}
+    >
+      <i class="fas fa-chart-line me-2"></i>Dashboard
+    </a>
+    <a
+      href="/blog-editor"
+      class={`btn ${currentPage === "blog-editor" ? "btn-primary" : "btn-outline-primary"}`}
+    >
+      <i class="fas fa-edit me-2"></i>Blog Editor
+    </a>
+    <a
+      href="/waitlist-manager"
+      class={`btn ${currentPage === "waitlist-manager" ? "btn-primary" : "btn-outline-primary"}`}
+    >
+      <i class="fas fa-list-check me-2"></i>Waitlist
+    </a>
+    <a
+      href="/contact-messages"
+      class={`btn ${currentPage === "contact-messages" ? "btn-primary" : "btn-outline-primary"}`}
+    >
+      <i class="fas fa-envelope me-2"></i>Messages
+    </a>
+    <a
+      href="/user-management"
+      class={`btn ${currentPage === "user-management" ? "btn-primary" : "btn-outline-primary"}`}
+    >
+      <i class="fas fa-users me-2"></i>Users
+    </a>
+    <a
+      href="/site-settings"
+      class={`btn ${currentPage === "site-settings" ? "btn-primary" : "btn-outline-primary"}`}
+    >
+      <i class="fas fa-cog me-2"></i>Settings
+    </a>
+  </div>
+</nav>

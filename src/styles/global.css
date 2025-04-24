@@ -1,0 +1,184 @@
+/* Global styles for ImpulsTrip Admin Dashboard */
+
+:root {
+    --primary: #FFF300; /* Yellow primary color from theme */
+    --dark: #000000;
+    --light: #ffffff;
+    --gray-dark: #212529;
+    --gray: #495057;
+    --gray-light: #adb5bd;
+}
+
+body {
+    background-color: var(--dark);
+    color: var(--light);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 18px;
+    line-height: 1.6;
+    padding-top: 20px;
+    min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: "Rampart One", sans-serif;
+    margin-bottom: 1rem;
+    letter-spacing: 0.02em;
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: var(--dark);
+    font-weight: bold;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: var(--dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-outline-primary {
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary);
+    color: var(--dark);
+}
+
+/* Header branding */
+.header-branding {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #333;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+}
+
+.logo-img {
+    height: 40px;
+    margin-right: 15px;
+}
+
+.alert-success {
+    background-color: rgba(25, 135, 84, 0.2);
+    color: #198754;
+    border-color: rgba(25, 135, 84, 0.3);
+}
+
+.alert-warning {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border-color: rgba(255, 193, 7, 0.3);
+}
+
+.alert-danger {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border-color: rgba(220, 53, 69, 0.3);
+}
+
+/* Feature cards */
+.feature-card {
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    height: 100%;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+}
+
+.feature-card-header {
+    background-color: rgba(0, 0, 0, 0.3);
+    color: var(--primary);
+    padding: 1.5rem;
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+}
+
+.feature-card-icon {
+    font-size: 2rem;
+    margin-right: 1rem;
+}
+
+.feature-card-body {
+    padding: 1.5rem;
+}
+
+.feature-card-footer {
+    padding: 1rem 1.5rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid #333;
+}
+
+/* User profile section */
+.user-profile {
+    display: flex;
+    align-items: center;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--primary);
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+/* Stats section */
+.stats-card {
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 1rem;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--gray-light);
+    margin-top: 0.5rem;
+}
+
+/* Footer */
+.dashboard-footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid #333;
+    color: var(--gray-light);
+    font-size: 0.9rem;
+} 

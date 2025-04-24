@@ -1,0 +1,313 @@
+---
+import AdminLayout from "../layouts/AdminLayout.astro";
+import { apiRequest } from "../utils/api";
+
+// We'll fetch these stats from the API
+const defaultStats = {
+  waitlist_count: 0,
+  blog_post_count: 0,
+  newsletter_count: 0,
+  new_today_count: 0,
+};
+
+// Try to fetch dashboard stats from API
+let stats = defaultStats;
+try {
+  stats = await apiRequest("/admin/dashboard-stats");
+} catch (error) {
+  console.error("Error fetching dashboard stats:", error);
+}
+---
+
+<AdminLayout title="Dashboard" currentPage="dashboard">
+  <div class="container">
+    <!-- Stats section -->
+    <div class="stats-card">
+      <div class="row">
+        <div class="col-md-3">
+          <div class="stat-item">
+            <div class="stat-number">{stats.waitlist_count}</div>
+            <div class="stat-label">Total Users</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-item">
+            <div class="stat-number">{stats.blog_post_count}</div>
+            <div class="stat-label">Blog Posts</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-item">
+            <div class="stat-number">{stats.newsletter_count}</div>
+            <div class="stat-label">Newsletter Subscribers</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-item">
+            <div class="stat-number">{stats.new_today_count}</div>
+            <div class="stat-label">New Today</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features section -->
+    <div class="row mt-4">
+      <div class="col-md-4 mb-4">
+        <div class="feature-card">
+          <div class="feature-card-header">
+            <div class="feature-card-icon">
+              <i class="fas fa-users"></i>
+            </div>
+            <h3 class="m-0">User Management</h3>
+          </div>
+          <div class="feature-card-body">
+            <p>
+              Manage your waitlist, view user data, and export information for
+              marketing campaigns.
+            </p>
+          </div>
+          <div class="feature-card-footer">
+            <a href="/user-management" class="btn btn-outline-primary"
+              >Manage Users</a
+            >
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4 mb-4">
+        <div class="feature-card">
+          <div class="feature-card-header">
+            <div class="feature-card-icon">
+              <i class="fas fa-edit"></i>
+            </div>
+            <h3 class="m-0">Blog Editor</h3>
+          </div>
+          <div class="feature-card-body">
+            <p>
+              Create and publish blog posts to engage with your audience and
+              improve SEO.
+            </p>
+          </div>
+          <div class="feature-card-footer">
+            <a href="/blog-editor" class="btn btn-outline-primary">Edit Blog</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4 mb-4">
+        <div class="feature-card">
+          <div class="feature-card-header">
+            <div class="feature-card-icon">
+              <i class="fas fa-cog"></i>
+            </div>
+            <h3 class="m-0">Site Settings</h3>
+          </div>
+          <div class="feature-card-body">
+            <p>
+              Configure site settings, update meta information, and manage
+              global content.
+            </p>
+          </div>
+          <div class="feature-card-footer">
+            <a href="/site-settings" class="btn btn-outline-primary"
+              >Configure</a
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6 mb-4">
+        <div class="feature-card">
+          <div class="feature-card-header">
+            <div class="feature-card-icon">
+              <i class="fas fa-list-alt"></i>
+            </div>
+            <h3 class="m-0">Waitlist Manager</h3>
+          </div>
+          <div class="feature-card-body">
+            <p>
+              Manage the waitlist queue, send invites, and track user engagement
+              with the platform.
+            </p>
+          </div>
+          <div class="feature-card-footer">
+            <a href="/waitlist-manager" class="btn btn-outline-primary"
+              >Manage Waitlist</a
+            >
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 mb-4">
+        <div class="feature-card">
+          <div class="feature-card-header">
+            <div class="feature-card-icon">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            <h3 class="m-0">Analytics</h3>
+          </div>
+          <div class="feature-card-body">
+            <p>
+              View detailed analytics about user engagement, traffic sources,
+              and content performance.
+            </p>
+          </div>
+          <div class="feature-card-footer">
+            <a href="#" class="btn btn-outline-primary">View Analytics</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6 mb-4">
+        <div class="feature-card">
+          <div class="feature-card-header">
+            <div class="feature-card-icon">
+              <i class="fas fa-envelope"></i>
+            </div>
+            <h3 class="m-0">Contact Messages</h3>
+          </div>
+          <div class="feature-card-body">
+            <p>
+              Review and respond to contact form messages from users and
+              visitors.
+            </p>
+          </div>
+          <div class="feature-card-footer">
+            <a href="/contact-messages" class="btn btn-outline-primary"
+              >View Messages</a
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  /* Stats section */
+  .stats-card {
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-item {
+    text-align: center;
+    padding: 1rem;
+  }
+
+  .stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.9rem;
+    color: var(--gray-light);
+    margin-top: 0.5rem;
+  }
+
+  /* Feature cards */
+  .feature-card {
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    height: 100%;
+    transition:
+      transform 0.3s ease,
+      box-shadow 0.3s ease;
+    overflow: hidden;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .feature-card-header {
+    background-color: rgba(0, 0, 0, 0.3);
+    color: var(--primary);
+    padding: 1.5rem;
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+  }
+
+  .feature-card-icon {
+    font-size: 2rem;
+    margin-right: 1rem;
+  }
+
+  .feature-card-body {
+    padding: 1.5rem;
+  }
+
+  .feature-card-footer {
+    padding: 1rem 1.5rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid #333;
+  }
+</style>
+
+<script>
+  import { apiRequest } from "../utils/api";
+
+  // Define an interface for dashboard stats
+  interface DashboardStats {
+    waitlist_count: number;
+    blog_post_count: number;
+    newsletter_count: number;
+    new_today_count: number;
+  }
+
+  async function refreshStats() {
+    try {
+      const stats = await apiRequest<DashboardStats>("/admin/dashboard-stats");
+      updateStatDisplay("waitlist_count", stats.waitlist_count);
+      updateStatDisplay("blog_post_count", stats.blog_post_count);
+      updateStatDisplay("newsletter_count", stats.newsletter_count);
+      updateStatDisplay("new_today_count", stats.new_today_count);
+    } catch (error) {
+      console.error("Error refreshing dashboard stats:", error);
+    }
+  }
+
+  function updateStatDisplay(statId: string, value: number) {
+    const statElements = document.querySelectorAll(".stat-number");
+    const labels = document.querySelectorAll(".stat-label");
+
+    for (let i = 0; i < statElements.length; i++) {
+      const label = labels[i].textContent?.trim().toLowerCase();
+
+      if (label === "total users" && statId === "waitlist_count") {
+        statElements[i].textContent = value.toString();
+      } else if (label === "blog posts" && statId === "blog_post_count") {
+        statElements[i].textContent = value.toString();
+      } else if (
+        label === "newsletter subscribers" &&
+        statId === "newsletter_count"
+      ) {
+        statElements[i].textContent = value.toString();
+      } else if (label === "new today" && statId === "new_today_count") {
+        statElements[i].textContent = value.toString();
+      }
+    }
+  }
+
+  // Refresh stats when page loads
+  document.addEventListener("DOMContentLoaded", () => {
+    refreshStats();
+
+    // Set up refresh interval (every 60 seconds)
+    setInterval(refreshStats, 60000);
+  });
+</script>
