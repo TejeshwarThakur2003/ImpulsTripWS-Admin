@@ -1,6 +1,6 @@
 ---
 import AdminLayout from "../layouts/AdminLayout.astro";
-import { apiRequest } from "../utils/api";
+import { apiRequest, fetchContactMessages } from "../utils/api";
 
 // Define interfaces
 interface ContactMessage {
@@ -31,7 +31,8 @@ const defaultContactData: ContactData = {
 // Try to fetch initial contact data
 let contactData: ContactData = defaultContactData;
 try {
-  const response = await apiRequest<ContactData>("/admin/contacts");
+  // Use the specialized contact fetching function instead
+  const response = await fetchContactMessages<ContactData>(1, 10);
   // Only update contactData if response has messages array and other required properties
   if (response && response.messages) {
     contactData = response;
@@ -149,12 +150,20 @@ try {
                     </td>
                     <td>{new Date(message.created_at).toLocaleDateString()}</td>
                     <td>
-                      <button
-                        class="btn btn-sm btn-outline-primary view-btn"
-                        data-id={message.id}
-                      >
-                        <i class="fas fa-eye" />
-                      </button>
+                      <div class="btn-group btn-group-sm">
+                        <button
+                          class="btn btn-sm btn-outline-primary view-btn"
+                          data-id={message.id}
+                        >
+                          <i class="fas fa-eye" />
+                        </button>
+                        <button
+                          class="btn btn-sm btn-outline-danger delete-btn"
+                          data-id={message.id}
+                        >
+                          <i class="fas fa-trash" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -277,6 +286,27 @@ try {
       </div>
     </div>
   </div>
+
+  <!-- Auth Check Script -->
+  <script>
+    // Extend Window interface to include loadContactData function
+    declare global {
+      interface Window {
+        loadContactData?: () => void;
+        skipAuthRedirect?: boolean;
+        reinitializeMessages?: () => Promise<void>;
+        confirmDeleteMessage?: (id: string, name: string) => void;
+      }
+    }
+
+    // Just call loadContactData directly without token verification
+    document.addEventListener("DOMContentLoaded", function () {
+      // Force reload data
+      if (typeof window.loadContactData === "function") {
+        setTimeout(() => window.loadContactData!(), 500);
+      }
+    });
+  </script>
 </AdminLayout>
 
 <style>
@@ -339,10 +369,46 @@ try {
     border-color: #333;
     color: #666;
   }
+
+  .contact-table .view-btn:hover {
+    background-color: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+
+  .contact-table .view-btn:focus {
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-rgb), 0.25);
+  }
+
+  .contact-table tbody tr {
+    transition: background-color 0.2s;
+  }
+
+  .contact-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .loading-spinner {
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    vertical-align: text-bottom;
+    border: 0.25em solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spinner-border 0.75s linear infinite;
+    opacity: 0.5;
+  }
+
+  @keyframes spinner-border {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 </style>
 
 <script>
-  import { apiRequest } from "../utils/api";
+  import { apiRequest, fetchContactMessages } from "../utils/api";
 
   // Use type assertion for Bootstrap to fix TypeScript errors
   const bootstrap = window.bootstrap as any;
@@ -364,360 +430,589 @@ try {
     limit: number;
   }
 
-  // Current filters and pagination state
-  let currentFilters = {
-    email: "",
-    name: "",
-    date: "",
-  };
-
-  let currentPage = 1;
-  let itemsPerPage = 10;
-  let totalPages = 1;
-  let currentMessage: ContactMessage | null = null;
-  let viewModal: any = null;
-
-  document.addEventListener("DOMContentLoaded", function () {
-    // Initialize the UI elements
-    initEventListeners();
-
-    // Initialize Bootstrap modal
-    viewModal = new bootstrap.Modal(
-      document.getElementById("viewMessageModal")
-    );
-
-    // Initial data load happens server-side
-    updatePaginationUI();
-
-    // Fetch fresh data on page load to ensure we have the latest
-    fetchContactData();
-  });
-
-  function initEventListeners() {
-    // Apply filters
-    document
-      .getElementById("applyFiltersBtn")
-      ?.addEventListener("click", function () {
-        applyFilters();
-      });
-
-    // Clear filters
-    document
-      .getElementById("clearFiltersBtn")
-      ?.addEventListener("click", function () {
-        clearFilters();
-      });
-
-    // Page size select
-    document
-      .getElementById("limitSelect")
-      ?.addEventListener("change", function (e) {
-        const target = e.target as HTMLSelectElement;
-        itemsPerPage = parseInt(target.value);
-        currentPage = 1;
-        fetchContactData();
-      });
-
-    // Pagination
-    document
-      .getElementById("prevPage")
-      ?.addEventListener("click", function (e) {
-        e.preventDefault();
-        if (currentPage > 1) {
-          currentPage--;
-          fetchContactData();
-        }
-      });
-
-    document
-      .getElementById("nextPage")
-      ?.addEventListener("click", function (e) {
-        e.preventDefault();
-        if (currentPage < totalPages) {
-          currentPage++;
-          fetchContactData();
-        }
-      });
-
-    // Export button
-    document
-      .getElementById("exportBtn")
-      ?.addEventListener("click", function () {
-        exportContactMessages();
-      });
-
-    // Set up dynamic event listeners for view buttons
-    document.addEventListener("click", function (e) {
-      const target = e.target as HTMLElement;
-
-      // Check if the click was on a view button or its icon
-      const viewBtn = target.closest(".view-btn");
-      if (viewBtn) {
-        const id = viewBtn.getAttribute("data-id");
-        if (id) {
-          openMessageModal(id);
-        }
-      }
-    });
-
-    // Reply button in modal
-    document
-      .getElementById("replyBtn")
-      ?.addEventListener("click", function (e) {
-        e.preventDefault();
-        if (currentMessage) {
-          window.location.href = `mailto:${currentMessage.email}?subject=Re: Your message to ImpulsTrip`;
-        }
-      });
-  }
-
-  async function applyFilters() {
-    // Get filter values
-    const emailFilter =
-      (document.getElementById("emailFilter") as HTMLInputElement)?.value || "";
-    const nameFilter =
-      (document.getElementById("nameFilter") as HTMLInputElement)?.value || "";
-    const dateFilter =
-      (document.getElementById("dateFilter") as HTMLInputElement)?.value || "";
-
-    // Update current filters
-    currentFilters = {
-      email: emailFilter,
-      name: nameFilter,
-      date: dateFilter,
-    };
-
-    // Reset to first page
-    currentPage = 1;
-
-    // Fetch filtered data
-    await fetchContactData();
-  }
-
-  function clearFilters() {
-    // Clear input values
-    (document.getElementById("emailFilter") as HTMLInputElement).value = "";
-    (document.getElementById("nameFilter") as HTMLInputElement).value = "";
-    (document.getElementById("dateFilter") as HTMLInputElement).value = "";
-
-    // Reset filters object
-    currentFilters = {
+  document.addEventListener("DOMContentLoaded", () => {
+    // Global state for filters and pagination
+    let currentPage = 1;
+    let itemsPerPage = 10;
+    let currentFilters = {
       email: "",
       name: "",
       date: "",
     };
 
-    // Reset to first page
-    currentPage = 1;
+    // Track the current message for reply functionality
+    let currentMessageData: ContactMessage | null = null;
 
-    // Fetch all data
-    fetchContactData();
-  }
+    // Get UI elements
+    const contactTableBody = document.getElementById("contactTableBody");
+    const pagination = document.getElementById("pagination");
+    const emailFilter = document.getElementById(
+      "emailFilter"
+    ) as HTMLInputElement;
+    const nameFilter = document.getElementById(
+      "nameFilter"
+    ) as HTMLInputElement;
+    const dateFilter = document.getElementById(
+      "dateFilter"
+    ) as HTMLInputElement;
+    const clearFiltersBtn = document.getElementById("clearFiltersBtn");
+    const applyFiltersBtn = document.getElementById("applyFiltersBtn");
+    const limitSelect = document.getElementById(
+      "limitSelect"
+    ) as HTMLSelectElement;
+    const exportBtn = document.getElementById("exportBtn");
+    const prevPageBtn = document.getElementById("prevPage");
+    const nextPageBtn = document.getElementById("nextPage");
+    const replyBtn = document.getElementById("replyBtn");
 
-  async function fetchContactData() {
-    try {
-      // Build query parameters
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: itemsPerPage.toString(),
+    // Initialize event listeners
+    if (limitSelect) {
+      limitSelect.addEventListener("change", (e) => {
+        itemsPerPage = parseInt(limitSelect.value);
+        currentPage = 1; // Reset to first page when changing limit
+        loadContactData();
       });
-
-      // Add filters if they exist
-      if (currentFilters.email) params.append("email", currentFilters.email);
-      if (currentFilters.name) params.append("name", currentFilters.name);
-      if (currentFilters.date) params.append("date", currentFilters.date);
-
-      // Make API request
-      const queryString = params.toString();
-      const endpoint = `/admin/contacts${queryString ? `?${queryString}` : ""}`;
-      const data = await apiRequest<ContactData>(endpoint);
-
-      // Update the UI
-      updateContactTable(data);
-      updatePaginationUI(data);
-    } catch (error) {
-      console.error("Error fetching contact data:", error);
-      alert("Failed to fetch contact data. Please try again.");
     }
-  }
 
-  function updateContactTable(data: ContactData) {
-    const tableBody = document.getElementById("contactTableBody");
-    if (!tableBody) return;
+    if (clearFiltersBtn) {
+      clearFiltersBtn.addEventListener("click", clearFilters);
+    }
 
-    // Clear existing rows
-    tableBody.innerHTML = "";
+    if (applyFiltersBtn) {
+      applyFiltersBtn.addEventListener("click", applyFilters);
+    }
 
-    // If no messages, show empty message
-    if (data.messages.length === 0) {
-      const emptyState = document.querySelector(".text-center.py-5");
-      if (emptyState) {
-        emptyState.classList.remove("d-none");
-        const reason = document.querySelector(".text-center.py-5 p");
-        if (reason) {
-          reason.textContent =
-            data.total === 0
-              ? "You haven't received any contact messages yet."
-              : "No messages match your current filters.";
+    if (prevPageBtn) {
+      prevPageBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (currentPage > 1) {
+          currentPage--;
+          loadContactData();
         }
-      }
-      return;
+      });
     }
 
-    // Hide empty state if present
-    const emptyState = document.querySelector(".text-center.py-5");
-    if (emptyState) {
-      emptyState.classList.add("d-none");
+    if (nextPageBtn) {
+      nextPageBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        // Next page button will be enabled/disabled based on response data
+        currentPage++;
+        loadContactData();
+      });
     }
 
-    // Create table rows
-    data.messages.forEach((message) => {
-      const row = document.createElement("tr");
-      row.setAttribute("data-id", message.id);
+    if (exportBtn) {
+      exportBtn.addEventListener("click", exportContactData);
+    }
 
-      // Message content columns
-      row.innerHTML = `
-        <td>${message.name}</td>
-        <td><a href="mailto:${message.email}">${message.email}</a></td>
-        <td>${message.message.length > 50 ? message.message.substring(0, 50) + "..." : message.message}</td>
-        <td>${new Date(message.created_at).toLocaleDateString()}</td>
-        <td>
-          <button class="btn btn-sm btn-outline-primary view-btn" data-id="${message.id}">
-            <i class="fas fa-eye"></i>
-          </button>
-        </td>
+    // Add event listener for reply button
+    if (replyBtn) {
+      replyBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (currentMessageData && currentMessageData.email) {
+          window.location.href = `mailto:${currentMessageData.email}?subject=Re: Your message to ImpulsTrip`;
+        } else {
+          if (window.showToast) {
+            window.showToast(
+              "Cannot reply - email address unavailable",
+              "error"
+            );
+          }
+        }
+      });
+    }
+
+    // Initial data load
+    loadContactData();
+
+    // Function to clear filters
+    function clearFilters() {
+      if (emailFilter) emailFilter.value = "";
+      if (nameFilter) nameFilter.value = "";
+      if (dateFilter) dateFilter.value = "";
+
+      currentFilters = {
+        email: "",
+        name: "",
+        date: "",
+      };
+
+      currentPage = 1; // Reset to first page
+      loadContactData();
+    }
+
+    // Function to apply filters
+    function applyFilters() {
+      currentFilters = {
+        email: emailFilter?.value || "",
+        name: nameFilter?.value || "",
+        date: dateFilter?.value || "",
+      };
+
+      currentPage = 1; // Reset to first page
+      loadContactData();
+    }
+
+    // Function to load contact data with current filters and pagination
+    async function loadContactData() {
+      if (!contactTableBody) return;
+
+      // Show loading state
+      contactTableBody.innerHTML = `
+        <tr>
+          <td colspan="5" class="text-center py-5">
+            <div class="loading-spinner mb-3 mx-auto"></div>
+            <div class="text-muted">Loading messages...</div>
+          </td>
+        </tr>
       `;
 
-      tableBody.appendChild(row);
-    });
-  }
+      try {
+        // Add a small delay to show the loading state (for better UX)
+        await new Promise((resolve) => setTimeout(resolve, 300));
 
-  function updatePaginationUI(data?: ContactData) {
-    if (data) {
-      // Update pagination info
-      document.getElementById("showingFrom")!.textContent = data.messages.length
-        ? ((data.page - 1) * data.limit + 1).toString()
-        : "0";
-      document.getElementById("showingTo")!.textContent = Math.min(
-        data.page * data.limit,
-        data.total
-      ).toString();
-      document.getElementById("showingTotal")!.textContent =
-        data.total.toString();
-      document.getElementById("totalMessages")!.textContent =
-        data.total.toString();
+        // Fetch data using our updated specialized function
+        const data = await fetchContactMessages<ContactData>(
+          currentPage,
+          itemsPerPage,
+          currentFilters
+        );
 
-      // Update pagination controls state
-      const prevBtn = document.getElementById("prevPage")!.parentElement!;
-      prevBtn.classList.toggle("disabled", data.page <= 1);
+        // Update the UI with new data
+        updateContactTable(data);
+        updatePaginationUI(data);
+      } catch (error) {
+        console.error("Error in loadContactData:", error);
+        contactTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center py-5">
+              <div class="text-danger mb-3">
+                <i class="fas fa-exclamation-circle fa-3x"></i>
+              </div>
+              <h5 class="text-danger">Failed to load messages</h5>
+              <p class="text-muted">Please try again later or contact support.</p>
+              <button class="btn btn-outline-primary mt-3" id="retryLoadBtn">
+                <i class="fas fa-sync me-2"></i>Retry
+              </button>
+            </td>
+          </tr>
+        `;
 
-      const nextBtn = document.getElementById("nextPage")!.parentElement!;
-      nextBtn.classList.toggle("disabled", data.page >= data.total_pages);
-
-      // Store total pages for navigation
-      totalPages = data.total_pages;
-
-      // Update page number buttons
-      updatePageNumbers(data.page, data.total_pages);
-    }
-  }
-
-  function updatePageNumbers(currentPage: number, totalPages: number) {
-    // Get pagination element
-    const pagination = document.getElementById("pagination");
-    if (!pagination) return;
-
-    // Remove all existing page number items
-    const pageItems = pagination.querySelectorAll(
-      "li:not(:first-child):not(:last-child)"
-    );
-    pageItems.forEach((item) => item.remove());
-
-    // Calculate range of pages to show
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, startPage + 4);
-
-    // Adjust if we're near the end
-    if (endPage - startPage < 4 && startPage > 1) {
-      startPage = Math.max(1, endPage - 4);
+        // Add retry button handler
+        const retryBtn = contactTableBody.querySelector("#retryLoadBtn");
+        if (retryBtn) {
+          retryBtn.addEventListener("click", () => {
+            loadContactData();
+          });
+        }
+      }
     }
 
-    // Get reference elements
-    const prevBtn = pagination.querySelector("li:first-child");
-    const nextBtn = pagination.querySelector("li:last-child");
+    // Function to update contact table with data
+    function updateContactTable(data: ContactData) {
+      if (!contactTableBody) return;
 
-    // Add page numbers
-    for (let i = startPage; i <= endPage; i++) {
-      const li = document.createElement("li");
-      li.className = `page-item ${i === currentPage ? "active" : ""}`;
-
-      const a = document.createElement("a");
-      a.className = "page-link";
-      a.href = "#";
-      a.textContent = i.toString();
-      a.addEventListener("click", function (e) {
-        e.preventDefault();
-        currentPage = i;
-        fetchContactData();
-      });
-
-      li.appendChild(a);
-
-      // Insert before the next button
-      pagination.insertBefore(li, nextBtn);
-    }
-  }
-
-  async function openMessageModal(id: string) {
-    try {
-      // Fetch message details
-      const message = await apiRequest<ContactMessage>(`/admin/contacts/${id}`);
-
-      if (!message) {
-        throw new Error("Failed to load message details");
+      if (!data.messages || data.messages.length === 0) {
+        contactTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center py-4 text-muted">
+              <i class="fas fa-inbox fa-2x mb-3"></i>
+              <div>No messages found</div>
+              <div class="small mt-2">
+                ${data.total === 0 ? "You haven't received any contact messages yet." : "No messages match your current filters."}
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
       }
 
-      // Store current message
-      currentMessage = message;
+      // Clear existing content
+      contactTableBody.innerHTML = "";
 
-      // Populate modal
-      document.getElementById("modalName")!.textContent = message.name;
+      // Populate with new data
+      data.messages.forEach((message) => {
+        const tr = document.createElement("tr");
+        tr.dataset.id = message.id;
 
-      const emailElement = document.getElementById("modalEmail")!;
-      emailElement.textContent = message.email;
-      emailElement.setAttribute("href", `mailto:${message.email}`);
+        // Format date
+        const messageDate = new Date(message.created_at).toLocaleDateString();
 
-      document.getElementById("modalDate")!.textContent = new Date(
-        message.created_at
-      ).toLocaleString();
-      document.getElementById("modalMessage")!.textContent = message.message;
+        // Truncate message for table display
+        const truncatedMessage =
+          message.message.length > 50
+            ? `${message.message.substring(0, 47)}...`
+            : message.message;
 
-      // Show modal
-      viewModal.show();
-    } catch (error) {
-      console.error("Error loading message details:", error);
-      alert("Failed to load message details. Please try again.");
+        tr.innerHTML = `
+          <td>${message.name}</td>
+          <td><a href="mailto:${message.email}">${message.email}</a></td>
+          <td>${truncatedMessage}</td>
+          <td>${messageDate}</td>
+          <td>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-sm btn-outline-primary view-btn" data-id="${message.id}">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${message.id}">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        `;
+
+        contactTableBody.appendChild(tr);
+
+        // Add event listeners to buttons
+        const viewBtn = tr.querySelector(".view-btn");
+        if (viewBtn) {
+          viewBtn.addEventListener("click", () => {
+            viewContactMessage(message.id);
+          });
+        }
+
+        const deleteBtn = tr.querySelector(".delete-btn");
+        if (deleteBtn) {
+          deleteBtn.addEventListener("click", () => {
+            confirmDeleteMessage(message.id, message.name);
+          });
+        }
+      });
+
+      // Update total count display
+      const totalMessagesEl = document.getElementById("totalMessages");
+      if (totalMessagesEl) {
+        totalMessagesEl.textContent = data.total.toString();
+      }
+
+      // Update pagination info
+      const showingFrom = document.getElementById("showingFrom");
+      const showingTo = document.getElementById("showingTo");
+      const showingTotal = document.getElementById("showingTotal");
+
+      if (showingFrom) {
+        showingFrom.textContent = data.messages.length
+          ? ((data.page - 1) * data.limit + 1).toString()
+          : "0";
+      }
+
+      if (showingTo) {
+        showingTo.textContent = Math.min(
+          data.page * data.limit,
+          data.total
+        ).toString();
+      }
+
+      if (showingTotal) {
+        showingTotal.textContent = data.total.toString();
+      }
     }
-  }
 
-  function exportContactMessages() {
-    try {
-      // Build query parameters including current filters
-      const params = new URLSearchParams();
+    // Function to update pagination UI based on current data
+    function updatePaginationUI(data: ContactData) {
+      if (!pagination) return;
 
-      if (currentFilters.email) params.append("email", currentFilters.email);
-      if (currentFilters.name) params.append("name", currentFilters.name);
-      if (currentFilters.date) params.append("date", currentFilters.date);
+      // Clear existing page numbers (but keep prev/next buttons)
+      const pageItems = pagination.querySelectorAll(
+        "li:not(:first-child):not(:last-child)"
+      );
+      pageItems.forEach((item) => item.remove());
 
-      // Create download URL with query parameters
-      const queryString = params.toString();
-      const downloadUrl = `/admin/contacts/export${queryString ? `?${queryString}` : ""}`;
+      // Update previous/next button states
+      const prevPageItem = pagination.querySelector("li:first-child");
+      const nextPageItem = pagination.querySelector("li:last-child");
 
-      // Redirect to download URL
-      window.location.href = downloadUrl;
-    } catch (error) {
-      console.error("Error exporting contact messages:", error);
-      alert("Failed to export contact messages. Please try again.");
+      if (prevPageItem) {
+        if (currentPage <= 1) {
+          prevPageItem.classList.add("disabled");
+        } else {
+          prevPageItem.classList.remove("disabled");
+        }
+      }
+
+      if (nextPageItem) {
+        if (currentPage >= data.total_pages) {
+          nextPageItem.classList.add("disabled");
+        } else {
+          nextPageItem.classList.remove("disabled");
+        }
+      }
+
+      // Don't add page numbers if no pages
+      if (data.total_pages <= 1) return;
+
+      // Determine which page numbers to show (max 5)
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(data.total_pages, startPage + 4);
+
+      // Adjust if we're near the end
+      if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+      }
+
+      // Create page number elements
+      for (let i = startPage; i <= endPage; i++) {
+        const li = document.createElement("li");
+        li.className = `page-item ${i === currentPage ? "active" : ""}`;
+
+        const a = document.createElement("a");
+        a.className = "page-link";
+        a.href = "#";
+        a.textContent = i.toString();
+
+        // Add click event
+        a.addEventListener("click", (e) => {
+          e.preventDefault();
+          currentPage = i;
+          loadContactData();
+        });
+
+        li.appendChild(a);
+
+        // Insert before the "Next" button
+        if (nextPageItem) {
+          pagination.insertBefore(li, nextPageItem);
+        } else {
+          pagination.appendChild(li);
+        }
+      }
     }
-  }
+
+    // Function to view a single contact message
+    async function viewContactMessage(id: string) {
+      try {
+        // Reset current message data
+        currentMessageData = null;
+
+        // Show loading state first
+        const modalName = document.getElementById("modalName");
+        const modalEmail = document.getElementById("modalEmail");
+        const modalDate = document.getElementById("modalDate");
+        const modalMessage = document.getElementById("modalMessage");
+
+        if (modalName) modalName.textContent = "Loading...";
+        if (modalEmail) modalEmail.innerHTML = "Loading...";
+        if (modalDate) modalDate.textContent = "Loading...";
+        if (modalMessage)
+          modalMessage.textContent = "Loading message content...";
+
+        // Show modal while loading
+        const modal = new bootstrap.Modal(
+          document.getElementById("viewMessageModal")
+        );
+        modal.show();
+
+        // Fetch the specific message with explicit options
+        console.log(`Fetching message details for ID: ${id}`);
+        const message = await apiRequest<ContactMessage>(
+          `/admin/contacts/${id}`,
+          {
+            method: "GET",
+            requiresAuth: true,
+            headers: {
+              // Ensure correct content type
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+          }
+        );
+
+        console.log("Message details received:", message);
+
+        // Track the current message for reply functionality
+        currentMessageData = message;
+
+        // Populate modal with data
+        if (modalName) modalName.textContent = message.name || "N/A";
+        if (modalEmail) {
+          if (message.email) {
+            modalEmail.innerHTML = `<a href="mailto:${message.email}">${message.email}</a>`;
+          } else {
+            modalEmail.textContent = "N/A";
+          }
+        }
+        if (modalDate) {
+          if (message.created_at) {
+            const date = new Date(message.created_at);
+            modalDate.textContent = date.toLocaleString();
+          } else {
+            modalDate.textContent = "N/A";
+          }
+        }
+        if (modalMessage)
+          modalMessage.textContent = message.message || "No message content";
+
+        // Enable reply button if we have an email
+        const replyBtn = document.getElementById(
+          "replyBtn"
+        ) as HTMLAnchorElement;
+        if (replyBtn) {
+          if (message.email) {
+            replyBtn.classList.remove("disabled");
+          } else {
+            replyBtn.classList.add("disabled");
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching message details:", error);
+
+        // Try to keep the modal open to show the error
+        const modalMessage = document.getElementById("modalMessage");
+        if (modalMessage) {
+          modalMessage.innerHTML = `
+            <div class="alert alert-danger">
+              <strong>Error:</strong> Failed to load message details. 
+              ${error instanceof Error ? error.message : "Unknown error"}
+            </div>
+          `;
+        }
+
+        // Disable reply button on error
+        const replyBtn = document.getElementById(
+          "replyBtn"
+        ) as HTMLAnchorElement;
+        if (replyBtn) {
+          replyBtn.classList.add("disabled");
+        }
+
+        // Show error toast if available
+        if (typeof window !== "undefined" && window.showToast) {
+          window.showToast(
+            `Failed to load message details: ${error instanceof Error ? error.message : "Unknown error"}`,
+            "error"
+          );
+        }
+      }
+    }
+
+    // Function to export contact data
+    async function exportContactData() {
+      try {
+        // Build query string with current filters
+        const queryParams = new URLSearchParams();
+
+        if (currentFilters.email)
+          queryParams.append("email", currentFilters.email);
+        if (currentFilters.name)
+          queryParams.append("name", currentFilters.name);
+        if (currentFilters.date)
+          queryParams.append("date", currentFilters.date);
+
+        const queryString = queryParams.toString();
+        const downloadUrl = `/admin/contacts/export${queryString ? `?${queryString}` : ""}`;
+
+        // Create a temporary link element to trigger download
+        const link = document.createElement("a");
+        // Use the correct base URL from env variables or config
+        const baseApiUrl =
+          import.meta.env.PUBLIC_EXPRESS_URL || "http://localhost:8001";
+        link.href = `${baseApiUrl}${downloadUrl}`;
+        link.target = "_blank";
+        link.download = "contact-messages.csv";
+
+        // Append to body, click, and remove
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Show success message
+        if (typeof window !== "undefined" && window.showToast) {
+          window.showToast(
+            "Export started. Check your downloads folder.",
+            "success"
+          );
+        }
+      } catch (error) {
+        console.error("Error exporting contact data:", error);
+
+        // Show error toast if available
+        if (typeof window !== "undefined" && window.showToast) {
+          window.showToast(
+            `Failed to export data: ${error instanceof Error ? error.message : "Unknown error"}`,
+            "error"
+          );
+        } else {
+          alert("Failed to export data. Please try again.");
+        }
+      }
+    }
+
+    // Function to handle contact message deletion confirmation
+    function confirmDeleteMessage(id: string, name: string) {
+      if (
+        confirm(
+          `Are you sure you want to delete the message from ${name || "this contact"}?`
+        )
+      ) {
+        deleteContactMessage(id);
+      }
+    }
+
+    // Show loading state for UI operations
+    function showLoadingState() {
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      if (loadingOverlay) {
+        loadingOverlay.classList.remove("d-none");
+      } else {
+        // Create loading overlay if it doesn't exist
+        const overlay = document.createElement("div");
+        overlay.id = "loadingOverlay";
+        overlay.className =
+          "position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-50";
+        overlay.style.zIndex = "9999";
+        overlay.innerHTML = `
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+      }
+    }
+
+    // Hide loading state
+    function hideLoadingState() {
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      if (loadingOverlay) {
+        loadingOverlay.classList.add("d-none");
+      }
+    }
+
+    // Function to delete a contact message
+    async function deleteContactMessage(id: string) {
+      try {
+        showLoadingState();
+
+        await apiRequest(`/admin/contacts/${id}`, {
+          method: "DELETE",
+          requiresAuth: true,
+        });
+
+        // Refresh the data after deletion
+        loadContactData();
+
+        // Show success message
+        if (typeof window !== "undefined" && window.showToast) {
+          window.showToast("Message deleted successfully", "success");
+        }
+      } catch (error) {
+        console.error("Error deleting message:", error);
+
+        // Show error toast if available
+        if (typeof window !== "undefined" && window.showToast) {
+          window.showToast(
+            `Failed to delete message: ${error instanceof Error ? error.message : "Unknown error"}`,
+            "error"
+          );
+        }
+      } finally {
+        hideLoadingState();
+      }
+    }
+
+    // Expose loadContactData to window for use in auth check script
+    window.loadContactData = loadContactData;
+
+    // Set confirmDeleteMessage function for global access
+    window.confirmDeleteMessage = confirmDeleteMessage;
+  });
 </script>

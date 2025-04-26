@@ -10,6 +10,26 @@ const defaultStats = {
   new_today_count: 0,
 };
 
+// Get the token from cookies
+const cookies = Astro.cookies;
+const token =
+  cookies.get("token")?.value || cookies.get("adminToken")?.value || "";
+
+// BUGFIX: If no token in cookies, redirect to login immediately (server-side redirect)
+if (!token) {
+  return Astro.redirect("/login?error=no_token");
+}
+
+// If we have a token in cookies, make sure adminToken cookie is set
+if (token && !cookies.get("adminToken")?.value) {
+  cookies.set("adminToken", token, {
+    path: "/",
+    maxAge: 60 * 60 * 24, // 1 day
+    sameSite: "lax",
+  });
+  console.log("Dashboard: Setting adminToken cookie");
+}
+
 // Try to fetch dashboard stats from API
 let stats = defaultStats;
 try {
@@ -51,7 +71,8 @@ try {
       </div>
     </div>
 
-    <!-- Features section -->
+    <!-- Main Feature Cards -->
+    <h2 class="mb-3">Main Features</h2>
     <div class="row mt-4">
       <div class="col-md-4 mb-4">
         <div class="feature-card">
@@ -99,25 +120,26 @@ try {
         <div class="feature-card">
           <div class="feature-card-header">
             <div class="feature-card-icon">
-              <i class="fas fa-cog"></i>
+              <i class="fas fa-file-contract"></i>
             </div>
-            <h3 class="m-0">Site Settings</h3>
+            <h3 class="m-0">Legal Documents</h3>
           </div>
           <div class="feature-card-body">
-            <p>
-              Configure site settings, update meta information, and manage
-              global content.
-            </p>
+            <p>Edit privacy policy and terms & conditions for your website.</p>
           </div>
           <div class="feature-card-footer">
-            <a href="/site-settings" class="btn btn-outline-primary"
-              >Configure</a
+            <a
+              href="/legal-editor"
+              id="legalEditorLink"
+              class="btn btn-outline-primary">Edit Legal Docs</a
             >
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Additional Tools -->
+    <h2 class="mb-3 mt-4">Additional Tools</h2>
     <div class="row">
       <div class="col-md-6 mb-4">
         <div class="feature-card">
@@ -145,18 +167,20 @@ try {
         <div class="feature-card">
           <div class="feature-card-header">
             <div class="feature-card-icon">
-              <i class="fas fa-chart-line"></i>
+              <i class="fas fa-cog"></i>
             </div>
-            <h3 class="m-0">Analytics</h3>
+            <h3 class="m-0">Site Settings</h3>
           </div>
           <div class="feature-card-body">
             <p>
-              View detailed analytics about user engagement, traffic sources,
-              and content performance.
+              Configure site settings, update meta information, and manage
+              global content.
             </p>
           </div>
           <div class="feature-card-footer">
-            <a href="#" class="btn btn-outline-primary">View Analytics</a>
+            <a href="/site-settings" class="btn btn-outline-primary"
+              >Configure</a
+            >
           </div>
         </div>
       </div>
@@ -181,6 +205,26 @@ try {
             <a href="/contact-messages" class="btn btn-outline-primary"
               >View Messages</a
             >
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 mb-4">
+        <div class="feature-card">
+          <div class="feature-card-header">
+            <div class="feature-card-icon">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            <h3 class="m-0">Analytics</h3>
+          </div>
+          <div class="feature-card-body">
+            <p>
+              View detailed analytics about user engagement, traffic sources,
+              and content performance.
+            </p>
+          </div>
+          <div class="feature-card-footer">
+            <a href="#" class="btn btn-outline-primary">View Analytics</a>
           </div>
         </div>
       </div>
@@ -256,10 +300,21 @@ try {
     background-color: rgba(0, 0, 0, 0.2);
     border-top: 1px solid #333;
   }
+
+  h2 {
+    color: var(--primary);
+    font-size: 1.5rem;
+  }
 </style>
 
 <script>
   import { apiRequest } from "../utils/api";
+  import { getToken, setToken } from "../utils/auth";
+
+  // BUGFIX: Clear redirect flag when dashboard loads successfully
+  if (typeof sessionStorage !== "undefined") {
+    sessionStorage.removeItem("redirecting_to_login");
+  }
 
   // Define an interface for dashboard stats
   interface DashboardStats {
@@ -271,13 +326,29 @@ try {
 
   async function refreshStats() {
     try {
-      const stats = await apiRequest<DashboardStats>("/admin/dashboard-stats");
+      // CRITICAL FIX: Only attempt to refresh stats if we have a valid token
+      const token = getToken();
+      if (!token) {
+        console.log("No valid token available, skipping stats refresh");
+        return;
+      }
+
+      // Set token in session storage to ensure availability for multiple requests
+      sessionStorage.setItem("adminTokenBackup", token);
+
+      // Use try/catch to prevent any redirect on failure
+      const stats = await apiRequest<DashboardStats>("/admin/dashboard-stats", {
+        // Custom options to prevent redirects
+        requiresAuth: true,
+      });
+
       updateStatDisplay("waitlist_count", stats.waitlist_count);
       updateStatDisplay("blog_post_count", stats.blog_post_count);
       updateStatDisplay("newsletter_count", stats.newsletter_count);
       updateStatDisplay("new_today_count", stats.new_today_count);
     } catch (error) {
       console.error("Error refreshing dashboard stats:", error);
+      // On error, don't redirect - just fail silently to prevent loops
     }
   }
 
@@ -303,11 +374,33 @@ try {
     }
   }
 
+  // Ensure cookie is set for authentication in other pages
+  function ensureAuthCookie() {
+    const token = getToken();
+    if (token) {
+      // Set the cookie manually for cross-page auth
+      document.cookie = `adminToken=${token}; path=/; max-age=86400; SameSite=Lax`;
+      console.log("Set adminToken cookie for cross-page auth");
+
+      // Update the legal editor link to include token in case cookies aren't working
+      const legalEditorLink = document.getElementById("legalEditorLink");
+      if (legalEditorLink) {
+        legalEditorLink.addEventListener("click", function (e) {
+          // Store token in sessionStorage as a backup auth method
+          sessionStorage.setItem("tempAuthToken", token);
+          console.log("Stored token in sessionStorage for legal editor");
+        });
+      }
+    }
+  }
+
   // Refresh stats when page loads
   document.addEventListener("DOMContentLoaded", () => {
     refreshStats();
+    ensureAuthCookie();
 
-    // Set up refresh interval (every 60 seconds)
-    setInterval(refreshStats, 60000);
+    // BUGFIX: Increase refresh interval from 60s to 5 minutes to reduce API calls
+    // This will minimize chances of CORS issues and redirect loops
+    setInterval(refreshStats, 300000); // 5 minutes
   });
 </script>

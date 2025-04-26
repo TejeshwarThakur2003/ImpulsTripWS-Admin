@@ -1,50 +1,114 @@
 ---
-// Navigation.astro - Common navigation component for all dashboard pages
-
-interface Props {
-  currentPage: string;
-}
+// Navigation component for admin dashboard
+// Receives currentPage to highlight the active link
 
 const { currentPage } = Astro.props;
+
+// Define navigation links - id must match the currentPage prop value
+const links = [
+  {
+    id: "dashboard",
+    name: "Dashboard",
+    icon: "fas fa-home",
+    url: "/dashboard",
+  },
+  { id: "blog-editor", name: "Blog", icon: "fas fa-edit", url: "/blog-editor" },
+  {
+    id: "waitlist-manager",
+    name: "Waitlist",
+    icon: "fas fa-list-alt",
+    url: "/waitlist-manager",
+  },
+  {
+    id: "contact-messages",
+    name: "Messages",
+    icon: "fas fa-envelope",
+    url: "/contact-messages",
+  },
+  {
+    id: "legal-editor",
+    name: "Legal Docs",
+    icon: "fas fa-file-contract",
+    url: "/legal-editor",
+  },
+  {
+    id: "site-settings",
+    name: "Settings",
+    icon: "fas fa-cog",
+    url: "/site-settings",
+  },
+];
 ---
 
-<nav class="mb-4">
-  <div class="d-flex flex-wrap gap-2">
-    <a
-      href="/dashboard"
-      class={`btn ${currentPage === "dashboard" ? "btn-primary" : "btn-outline-primary"}`}
-    >
-      <i class="fas fa-chart-line me-2"></i>Dashboard
-    </a>
-    <a
-      href="/blog-editor"
-      class={`btn ${currentPage === "blog-editor" ? "btn-primary" : "btn-outline-primary"}`}
-    >
-      <i class="fas fa-edit me-2"></i>Blog Editor
-    </a>
-    <a
-      href="/waitlist-manager"
-      class={`btn ${currentPage === "waitlist-manager" ? "btn-primary" : "btn-outline-primary"}`}
-    >
-      <i class="fas fa-list-check me-2"></i>Waitlist
-    </a>
-    <a
-      href="/contact-messages"
-      class={`btn ${currentPage === "contact-messages" ? "btn-primary" : "btn-outline-primary"}`}
-    >
-      <i class="fas fa-envelope me-2"></i>Messages
-    </a>
-    <a
-      href="/user-management"
-      class={`btn ${currentPage === "user-management" ? "btn-primary" : "btn-outline-primary"}`}
-    >
-      <i class="fas fa-users me-2"></i>Users
-    </a>
-    <a
-      href="/site-settings"
-      class={`btn ${currentPage === "site-settings" ? "btn-primary" : "btn-outline-primary"}`}
-    >
-      <i class="fas fa-cog me-2"></i>Settings
-    </a>
-  </div>
+<nav class="admin-navigation mb-4">
+  <ul class="nav nav-pills">
+    {
+      links.map((link) => (
+        <li class="nav-item">
+          <a
+            class={`nav-link ${currentPage === link.id ? "active" : ""}`}
+            href={link.url}
+          >
+            <i class={link.icon} /> {link.name}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
 </nav>
+
+<style>
+  .admin-navigation {
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 1.25rem;
+    margin-top: 1.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .nav-link {
+    color: var(--gray-light);
+    border-radius: var(--border-radius);
+    padding: 0.7rem 1.2rem;
+    margin-right: 0.5rem;
+    font-weight: 500;
+    transition: var(--transition);
+    letter-spacing: 0.02em;
+  }
+
+  .nav-link:hover {
+    color: var(--light);
+    background-color: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+  }
+
+  .nav-link.active {
+    background: linear-gradient(135deg, var(--primary) 0%, #ffcc00 100%);
+    color: var(--dark);
+    font-weight: 600;
+    box-shadow: 0 4px 8px rgba(255, 243, 0, 0.25);
+  }
+
+  .nav-link i {
+    margin-right: 0.6rem;
+    font-size: 1.1rem;
+  }
+
+  @media (max-width: 768px) {
+    .nav-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-item {
+      margin-bottom: 0.5rem;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      padding: 0.6rem 1rem;
+      margin-right: 0.25rem;
+    }
+  }
+</style>

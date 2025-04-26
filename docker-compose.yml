@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  admin-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-8082}:${PORT:-8082}"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT:-8082}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - impulstrip-network
+
+networks:
+  impulstrip-network:
+    external: true  # This assumes the backend service creates this network 

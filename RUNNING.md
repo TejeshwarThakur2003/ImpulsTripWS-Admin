@@ -1,117 +1,111 @@
 # Running the ImpulsTrip Admin Dashboard
 
-This document provides instructions for running the admin dashboard in development and production modes.
+This document provides instructions for running the ImpulsTrip Admin Dashboard in both development and production environments.
 
-## Prerequisites
+## Development Environment
 
-- Node.js 18.x or higher
-- npm 8.x or higher
+### Prerequisites
+- Node.js 18 or later
+- npm 9 or later
+- MongoDB running locally or accessible via network
 
-## Development Mode
+### Setup
 
-1. **Install dependencies**
-
+1. **Install dependencies**:
    ```bash
-   cd admin-dashboard
    npm install
    ```
 
-2. **Verify environment variables**
-
-   The `.env` file should already be created with development settings. If not, create it with:
-
+2. **Set up environment variables**:
+   ```bash
+   cp .env.example .env
    ```
-   PUBLIC_WEBSITE_URL=http://localhost:8082
-   PORT=8082
-   PUBLIC_API_URL=http://localhost:8001/api
-   PUBLIC_API_TIMEOUT=30000
-   PUBLIC_AUTH_TOKEN_NAME=adminToken
-   PUBLIC_AUTH_USERNAME_NAME=adminUsername
-   PUBLIC_COOKIE_SECURE=false
-   PUBLIC_COOKIE_SAME_SITE=lax
-   ```
+   
+   Edit the `.env` file to configure the development environment:
+   - Set `NODE_ENV=development`
+   - Update API URLs to point to your development backend
 
-3. **Start the development server**
-
+3. **Start the development server**:
    ```bash
    npm run dev
    ```
 
-   This will start the Astro development server on port 8082.
+4. **Access the dashboard**:
+   Open your browser and navigate to `http://localhost:8082` (or the port specified in your `.env` file)
 
-4. **Access the dashboard**
+### Development Commands
 
-   Open your browser and navigate to:
-   
+- `npm run dev`: Start the development server with hot-reloading
+- `npm run build`: Build the application for production
+- `npm run preview`: Preview the production build locally
+- `npm run check`: Run type checking
+- `npm run lint`: Run code linting
+
+## Production Environment
+
+### Using Docker (Recommended)
+
+1. **Build and start the container**:
+   ```bash
+   docker-compose up -d --build
    ```
-   http://localhost:8082
+
+2. **Verify the container is running**:
+   ```bash
+   docker-compose ps
    ```
 
-   You will be automatically redirected to the login page. 
-   
-   For testing, you can use:
-   - Username: admin
-   - Password: admin123
+3. **View logs**:
+   ```bash
+   docker-compose logs -f admin-dashboard
+   ```
 
-## Production Mode
+### Manual Deployment
 
-1. **Build the application**
-
+1. **Build the application**:
    ```bash
    npm run build
    ```
 
-   This will create optimized production files in the `dist` directory.
-
-2. **Start the production server**
-
+2. **Start the production server**:
    ```bash
-   npm start
+   NODE_ENV=production npm start
    ```
 
-   Or manually:
+## Deployment with the Full Stack
 
+To run the entire stack (MongoDB, Backend API, Admin Dashboard):
+
+1. Navigate to the project root:
    ```bash
-   node server.js
+   cd /path/to/impulstripwebsite
    ```
 
-   The server will start on port 8082 (or the port specified in your environment variables).
+2. Create a root `.env` file (based on the provided example)
+
+3. Start all services:
+   ```bash
+   docker-compose up -d
+   ```
+
+## Configuration Options
+
+The admin dashboard can be configured using environment variables in the `.env` file:
+
+| Variable                | Description                               | Default Value               |
+|------------------------|-------------------------------------------|----------------------------|
+| PORT                   | The port to run the server on             | 8082                       |
+| NODE_ENV               | Environment (development/production)      | development                |
+| PUBLIC_WEBSITE_URL     | The base URL of the admin dashboard       | http://localhost:8082      |
+| PUBLIC_API_URL         | The URL of the Node.js API                | http://localhost:8001      |
+| PUBLIC_FASTAPI_URL     | The URL of the FastAPI API                | http://localhost:8000      |
+| PUBLIC_API_TIMEOUT     | API request timeout in milliseconds       | 30000                      |
+| PUBLIC_AUTH_TOKEN_NAME | Name of the auth token in localStorage    | adminToken                 |
+| PUBLIC_COOKIE_SECURE   | Whether cookies should be secure          | false (true in production) |
+| PUBLIC_COOKIE_SAME_SITE| SameSite attribute for cookies           | lax (strict in production) |
 
 ## Troubleshooting
 
-If you encounter issues:
-
-1. **Clear node_modules and reinstall**
-
-   ```bash
-   rm -rf node_modules
-   npm install
-   ```
-
-2. **Check backend API connection**
-
-   Make sure your backend API server is running on the correct port (default: 8001).
-   
-   The dashboard expects the API to be available at `http://localhost:8001/api`.
-
-3. **Verify environment variables**
-
-   Ensure your `.env` file exists and has the correct values.
-
-4. **Clear browser cache and storage**
-
-   If authentication issues occur, clear your browser's local storage:
-   
-   ```javascript
-   // In browser console
-   localStorage.clear()
-   ```
-
-## Security Notes
-
-For production deployment:
-
-1. Set `PUBLIC_COOKIE_SECURE=true` in your production `.env` file
-2. Use HTTPS for all connections
-3. Set a proper domain for `PUBLIC_WEBSITE_URL`
-4. Make sure the API endpoint is secured with HTTPS 
+- **Server fails to start**: Check if the port is already in use
+- **API connection issues**: Verify the API endpoints are correctly configured in your `.env` file
+- **Authentication problems**: Ensure the backend API is running and accessible 

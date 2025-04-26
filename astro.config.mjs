@@ -1,9 +1,14 @@
 import { defineConfig } from 'astro/config';
+import node from '@astrojs/node';
 
 // https://astro.build/config
 export default defineConfig({
   site: process.env.PUBLIC_WEBSITE_URL || 'https://admin.impulstrip.com',
   base: '/',
+  output: 'server',
+  adapter: node({
+    mode: 'standalone'
+  }),
   server: {
     port: process.env.PORT ? parseInt(process.env.PORT) : 8082,
     host: true
@@ -11,14 +16,17 @@ export default defineConfig({
   outDir: './dist',
   build: {
     format: 'file',
-    assets: 'assets'
+    assets: 'assets',
+    inlineStylesheets: 'auto'
   },
   vite: {
     ssr: {
       noExternal: ['@fontsource/*']
     },
     build: {
-      sourcemap: false,
+      sourcemap: process.env.NODE_ENV !== 'production',
+      minify: process.env.NODE_ENV === 'production',
+      cssMinify: process.env.NODE_ENV === 'production',
       rollupOptions: {
         output: {
           manualChunks: {
@@ -51,6 +59,10 @@ export default defineConfig({
       {
         key: 'Referrer-Policy',
         value: 'strict-origin-when-cross-origin'
+      },
+      {
+        key: 'Permissions-Policy',
+        value: 'camera=(), microphone=(), geolocation=()'
       }
     ]
   }

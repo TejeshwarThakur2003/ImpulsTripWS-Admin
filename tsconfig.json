@@ -16,5 +16,5 @@
     }
   },
   "include": [".astro/types.d.ts", "src/**/*", "**/*.ts", "**/*.tsx"],
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["dist", "node_modules", "**/blog-editor-fixed.astro", "**/blog-editor-orig.astro", "**/test-upload.astro"]
 } 

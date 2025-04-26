@@ -1,14 +1,6 @@
 ---
 import AdminLayout from "../layouts/AdminLayout.astro";
 import { apiRequest } from "../utils/api";
-
-// This could be fetched from the API in a real implementation
-const categories = [
-  { id: 1, name: "Travel Tips" },
-  { id: 2, name: "Destinations" },
-  { id: 3, name: "Adventure" },
-  { id: 4, name: "Budget Travel" },
-];
 ---
 
 <AdminLayout title="Blog Editor" currentPage="blog-editor">
@@ -60,367 +52,337 @@ const categories = [
                   <i class="fas fa-eye me-2"></i>Preview
                 </button>
               </li>
-              <li class="nav-item" role="presentation">
-                <button
-                  class="nav-link"
-                  id="posts-tab"
-                  data-bs-toggle="tab"
-                  data-bs-target="#all-posts"
-                  type="button"
-                  role="tab"
-                  aria-controls="all-posts"
-                  aria-selected="false"
-                >
-                  <i class="fas fa-list me-2"></i>All Posts
-                </button>
-              </li>
             </ul>
           </div>
 
           <div class="editor-card-body">
-            <div class="tab-content" id="editorTabContent">
-              <!-- Edit Tab -->
-              <div
-                class="tab-pane fade show active"
-                id="edit-content"
-                role="tabpanel"
-                aria-labelledby="edit-tab"
-              >
-                <form id="postForm">
-                  <input type="hidden" id="postId" value="" />
+            <form id="postForm">
+              <input type="hidden" id="postId" name="postId" />
 
-                  <div class="mb-3">
-                    <label for="postTitle" class="form-label">Title</label>
-                    <input
-                      type="text"
-                      class="form-control"
-                      id="postTitle"
-                      placeholder="Enter post title"
-                      required
-                    />
+              <div class="mb-3">
+                <label for="title" class="form-label">Title</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="title"
+                  name="title"
+                  required
+                />
+              </div>
+
+              <div class="mb-3">
+                <label for="tagline" class="form-label">Tagline</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="tagline"
+                  name="tagline"
+                  required
+                />
+              </div>
+
+              <div class="mb-3">
+                <label for="coverImage" class="form-label">Cover Image</label>
+                <div class="input-group">
+                  <input
+                    type="file"
+                    class="form-control"
+                    id="coverImage"
+                    name="coverImage"
+                    accept="image/*"
+                  />
+                  <button
+                    class="btn btn-outline-secondary"
+                    type="button"
+                    id="uploadCoverBtn"
+                  >
+                    Upload
+                  </button>
+                </div>
+                <div id="coverImagePreview" class="mt-2 d-none">
+                  <img src="" alt="Cover preview" class="img-fluid" />
+                  <button
+                    type="button"
+                    class="btn btn-danger btn-sm mt-2"
+                    id="removeCoverBtn"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="content" class="form-label">Content</label>
+                <div class="editor-guide mb-2">
+                  <div class="editor-guide-toggle" id="editorGuideToggle">
+                    <i class="fas fa-info-circle"></i> Editor Guide
                   </div>
+                  <div
+                    class="editor-guide-content"
+                    id="editorGuideContent"
+                    style="display: none;"
+                  >
+                    <h5>Markdown Formatting Guide</h5>
+                    <div class="row">
+                      <div class="col-md-6">
+                        <h6>Basic Formatting</h6>
+                        <ul class="guide-list">
+                          <li><code># Heading 1</code> - For main headings</li>
+                          <li>
+                            <code>## Heading 2</code> - For section headings
+                          </li>
+                          <li>
+                            <code>### Heading 3</code> - For subsection headings
+                          </li>
+                          <li>
+                            <code>**bold text**</code> - For <strong
+                              >bold text</strong
+                            >
+                          </li>
+                          <li>
+                            <code>*italic text*</code> - For <em>italic text</em
+                            >
+                          </li>
+                          <li>
+                            <code>~~strikethrough~~</code> - For <del
+                              >strikethrough</del
+                            >
+                          </li>
+                          <li>
+                            <code>[link text](url)</code> - For hyperlinks
+                          </li>
+                        </ul>
 
-                  <div class="mb-3">
-                    <label for="postTagline" class="form-label">Tagline</label>
-                    <input
-                      type="text"
-                      class="form-control"
-                      id="postTagline"
-                      placeholder="Enter a brief tagline"
-                    />
-                  </div>
+                        <h6>Lists</h6>
+                        <ul class="guide-list">
+                          <li>
+                            <code>- item</code> or <code>* item</code> - For bullet
+                            lists
+                          </li>
+                          <li><code>1. item</code> - For numbered lists</li>
+                          <li>Indent with spaces for nested lists</li>
+                        </ul>
+                      </div>
 
-                  <div class="row mb-3">
-                    <div class="col-md-6">
-                      <label for="postAuthor" class="form-label">Author</label>
-                      <input
-                        type="text"
-                        class="form-control"
-                        id="postAuthor"
-                        placeholder="Enter author name"
-                      />
+                      <div class="col-md-6">
+                        <h6>Images</h6>
+                        <p>
+                          Basic markdown syntax: <code
+                            >![Alt text](image-url)</code
+                          >
+                        </p>
+                        <p>Or using HTML for more control:</p>
+                        <ul class="guide-list">
+                          <li>
+                            <code
+                              >&lt;img src="image-url" alt="Description"
+                              style="float:left; width:250px; margin:0 1rem 1rem
+                              0;" /&gt;</code
+                            > - Left-floating image
+                          </li>
+                          <li>
+                            <code
+                              >&lt;img src="image-url" alt="Description"
+                              style="float:right; width:250px; margin:0 0 1rem
+                              1rem;" /&gt;</code
+                            > - Right-floating image
+                          </li>
+                          <li>
+                            <code
+                              >&lt;img src="image-url" alt="Description"
+                              style="display:block; max-width:100%; margin:1rem
+                              auto;" /&gt;</code
+                            > - Centered image
+                          </li>
+                        </ul>
+                        <p>To add images uploaded from this editor:</p>
+                        <ol class="guide-list">
+                          <li>Upload images using the Images section below</li>
+                          <li>
+                            Click one of the buttons to insert the image:
+                            <ul>
+                              <li>
+                                <strong>MD</strong> - Insert markdown image
+                              </li>
+                              <li>
+                                <strong>←</strong> - Insert left-floating HTML image
+                              </li>
+                              <li>
+                                <strong>↕</strong> - Insert centered HTML image
+                              </li>
+                              <li>
+                                <strong>→</strong> - Insert right-floating HTML image
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            You can also copy just the ID by clicking the ID
+                            button
+                          </li>
+                        </ol>
+
+                        <h6>Advanced Formatting</h6>
+                        <ul class="guide-list">
+                          <li><code>> text</code> - For blockquotes</li>
+                          <li>
+                            <code>---</code> - For horizontal rule/divider
+                          </li>
+                          <li>
+                            <code>`inline code`</code> - For <code
+                              >inline code</code
+                            >
+                          </li>
+                          <li>
+                            <p>Code blocks:</p>
+                            <pre><code>```javascript
+
+```</code></pre>
+                          </li>
+                        </ul>
+                      </div>
                     </div>
-                    <div class="col-md-6">
-                      <label for="postCategory" class="form-label"
-                        >Category</label
-                      >
-                      <select class="form-select" id="postCategory">
-                        {
-                          categories.map((category) => (
-                            <option value={category.id}>{category.name}</option>
-                          ))
-                        }
-                      </select>
+                    <div class="mt-3">
+                      <h6>Markdown Example</h6>
+                      <pre
+                        class="markdown-example bg-dark text-light p-2 rounded">
+# My Blog Post Title
+
+**Published:** May 12, 2023 | **Author:** Jane Doe
+
+This is an introduction paragraph for the blog post. It can contain **bold text**, 
+*italics*, or [links](https://example.com).
+
+## First Section Heading
+
+<img src="/admin-dashboard/placeholder-1.jpg" alt="Image with left alignment" style="float:left; width:250px; margin:0 1rem 1rem 0;" />
+
+Here's a paragraph with some content explaining the first main point of the article. When using a left-floating image like this, the text will wrap around the image on the right side. This creates a nice layout for your content and makes efficient use of space.
+
+You can continue writing and the text will keep flowing around the image until you reach the bottom of the image or insert a clearing element.
+
+### Subsection
+
+* Bullet point 1
+* Bullet point 2
+  * Nested bullet point
+* Bullet point 3
+
+## Second Section Heading
+
+<img src="/admin-dashboard/placeholder-2.jpg" alt="Image with right alignment" style="float:right; width:250px; margin:0 0 1rem 1rem;" />
+
+1. First numbered step
+2. Second numbered step
+3. Third numbered step
+
+This text will flow around the right-floating image on the left side. This is great for breaking up long sections of text and adding visual interest to your blog post.
+
+> This is a blockquote that can be used to highlight important information or quotes.
+
+## Full-width Image Section
+
+<img src="/admin-dashboard/placeholder-3.jpg" alt="Full width centered image" style="display:block; max-width:100%; margin:1rem auto;" />
+
+## Conclusion
+
+Summary paragraph wrapping up the blog post content.
+                      </pre>
                     </div>
                   </div>
+                </div>
+                <textarea
+                  class="form-control"
+                  id="content"
+                  name="content"
+                  rows="15"
+                  required></textarea>
+              </div>
 
-                  <div class="mb-3">
-                    <label for="postCoverImage" class="form-label"
-                      >Cover Image</label
-                    >
-                    <input
-                      type="file"
-                      class="form-control"
-                      id="postCoverImage"
-                      accept="image/*"
-                    />
-                    <div id="coverImagePreview" class="mt-2 d-none">
+              <div class="tab-content" id="editorTabContent">
+                <!-- Edit Tab -->
+                <div
+                  class="tab-pane fade show active"
+                  id="edit-content"
+                  role="tabpanel"
+                  aria-labelledby="edit-tab"
+                >
+                  <!-- Content is already in the textarea above -->
+                </div>
+
+                <!-- Preview Tab -->
+                <div
+                  class="tab-pane fade"
+                  id="preview-content"
+                  role="tabpanel"
+                  aria-labelledby="preview-tab"
+                >
+                  <div class="preview-container">
+                    <h1 id="previewTitle" class="mb-3">Title Preview</h1>
+                    <p id="previewTagline" class="lead mb-4">Tagline preview</p>
+                    <div id="previewCoverImage" class="mb-4">
                       <img
                         src=""
                         alt="Cover preview"
-                        class="img-thumbnail"
-                        style="max-height: 200px;"
+                        class="img-fluid rounded"
                       />
                     </div>
+                    <div id="previewContent" class="markdown-preview"></div>
                   </div>
+                </div>
+              </div>
 
-                  <div class="mb-3">
-                    <label for="postContent" class="form-label">Content</label>
-                    <div id="html-editor-container">
-                      <div id="toolbar">
-                        <span class="ql-formats">
-                          <select class="ql-header">
-                            <option value="1">Heading 1</option>
-                            <option value="2">Heading 2</option>
-                            <option value="3">Heading 3</option>
-                            <option value="4">Heading 4</option>
-                            <option value="5">Heading 5</option>
-                            <option value="6">Heading 6</option>
-                            <option selected>Normal</option>
-                          </select>
-                        </span>
-                        <span class="ql-formats">
-                          <button class="ql-bold"></button>
-                          <button class="ql-italic"></button>
-                          <button class="ql-underline"></button>
-                          <button class="ql-strike"></button>
-                        </span>
-                        <span class="ql-formats">
-                          <button class="ql-blockquote"></button>
-                          <button class="ql-code-block"></button>
-                        </span>
-                        <span class="ql-formats">
-                          <button class="ql-list" value="ordered"></button>
-                          <button class="ql-list" value="bullet"></button>
-                        </span>
-                        <span class="ql-formats">
-                          <button class="ql-link"></button>
-                          <button class="ql-image"></button>
-                          <button class="ql-video"></button>
-                        </span>
-                        <span class="ql-formats">
-                          <button class="ql-clean"></button>
-                        </span>
-                      </div>
-                      <div id="editor" style="height: 400px;"></div>
-                      <input type="hidden" id="postContent" />
-                    </div>
-                  </div>
-
-                  <div class="mb-3">
-                    <label for="postInlineImages" class="form-label"
-                      >Images</label
-                    >
-                    <input
-                      type="file"
-                      class="form-control"
-                      id="postInlineImages"
-                      accept="image/*"
-                      multiple
-                    />
-                    <div
-                      id="inlineImagesPreview"
-                      class="mt-2 row row-cols-2 row-cols-md-4 g-2"
-                    >
-                      <!-- Preview images will appear here -->
-                    </div>
-                    <div class="form-text">
-                      Upload images to use in your content. You can insert them
-                      using the image button in the editor.
-                    </div>
-                  </div>
-
-                  <div
-                    class="d-flex justify-content-between align-items-center mt-4"
+              <div class="mb-3">
+                <label class="form-label">Images</label>
+                <div class="input-group mb-2">
+                  <input
+                    type="file"
+                    class="form-control"
+                    id="imageUpload"
+                    accept="image/*"
+                    multiple
+                  />
+                  <button
+                    class="btn btn-outline-secondary"
+                    type="button"
+                    id="uploadImagesBtn"
                   >
-                    <div>
-                      <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Save Post
-                      </button>
-                      <button
-                        type="button"
-                        id="clearFormBtn"
-                        class="btn btn-outline-secondary ms-2"
-                      >
-                        <i class="fas fa-times me-2"></i>Clear
-                      </button>
-                    </div>
-                    <div>
-                      <button
-                        type="button"
-                        id="deletePostBtn"
-                        class="btn btn-danger d-none"
-                      >
-                        <i class="fas fa-trash-alt me-2"></i>Delete
-                      </button>
-                    </div>
-                  </div>
-                </form>
+                    Upload Images
+                  </button>
+                </div>
+                <div id="imageGallery" class="image-gallery-container"></div>
               </div>
 
-              <!-- Preview Tab -->
-              <div
-                class="tab-pane fade"
-                id="preview-content"
-                role="tabpanel"
-                aria-labelledby="preview-tab"
-              >
-                <div class="preview-container">
-                  <div class="preview-header mb-4">
-                    <h1 id="previewTitle" class="mb-2">Post Title</h1>
-                    <p id="previewTagline" class="text-muted">Post Tagline</p>
-                    <div class="preview-meta">
-                      <span id="previewAuthor">Author</span> |
-                      <span id="previewCategory">Category</span> |
-                      <span id="previewDate"
-                        >{new Date().toLocaleDateString()}</span
-                      >
-                    </div>
-                    <div id="previewCoverImage" class="mt-3 mb-4">
-                      <!-- Cover image will appear here -->
-                    </div>
-                  </div>
-                  <div id="previewBody" class="preview-body">
-                    <!-- Post content will appear here -->
-                  </div>
-                </div>
+              <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-save me-2"></i>Save Post
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-danger d-none"
+                  id="deletePostBtn"
+                >
+                  <i class="fas fa-trash me-2"></i>Delete Post
+                </button>
               </div>
-
-              <!-- All Posts Tab -->
-              <div
-                class="tab-pane fade"
-                id="all-posts"
-                role="tabpanel"
-                aria-labelledby="posts-tab"
-              >
-                <div class="posts-filter mb-3">
-                  <div class="row">
-                    <div class="col-md-6">
-                      <input
-                        type="text"
-                        class="form-control"
-                        id="searchPosts"
-                        placeholder="Search posts..."
-                      />
-                    </div>
-                    <div class="col-md-4">
-                      <select class="form-select" id="filterCategory">
-                        <option value="">All Categories</option>
-                        {
-                          categories.map((category) => (
-                            <option value={category.id}>{category.name}</option>
-                          ))
-                        }
-                      </select>
-                    </div>
-                    <div class="col-md-2">
-                      <select class="form-select" id="sortPosts">
-                        <option value="newest">Newest</option>
-                        <option value="oldest">Oldest</option>
-                        <option value="title">Title</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div id="postsTableContainer" class="mt-3">
-                  <div class="table-responsive">
-                    <table class="table table-dark">
-                      <thead>
-                        <tr>
-                          <th>Title</th>
-                          <th>Author</th>
-                          <th>Category</th>
-                          <th>Date</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody id="postsTableBody">
-                        <!-- Posts will be loaded here -->
-                        <tr>
-                          <td colspan="5" class="text-center">
-                            Loading posts...
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
+            </form>
           </div>
         </div>
       </div>
 
       <div class="col-lg-4">
-        <!-- Help sidebar -->
-        <div class="editor-card">
-          <div class="editor-card-header">
-            <h5>HTML Editor Guide</h5>
+        <!-- Posts List -->
+        <div class="posts-list-card">
+          <div class="posts-list-header">
+            <h5 class="mb-0">Recent Posts</h5>
+            <button
+              class="btn btn-sm btn-outline-secondary"
+              id="refreshPostsBtn"
+            >
+              <i class="fas fa-sync-alt"></i>
+            </button>
           </div>
-          <div class="editor-card-body">
-            <div class="markdown-help">
-              <div class="markdown-item">
-                <div class="markdown-syntax">Headings</div>
-                <div class="markdown-desc">
-                  Use the dropdown to select heading levels (H1-H6)
-                </div>
-              </div>
-              <div class="markdown-item">
-                <div class="markdown-syntax">Text Formatting</div>
-                <div class="markdown-desc">
-                  Use the toolbar buttons for bold, italic, underline, etc.
-                </div>
-              </div>
-              <div class="markdown-item">
-                <div class="markdown-syntax">Links</div>
-                <div class="markdown-desc">
-                  Use the link button to insert hyperlinks
-                </div>
-              </div>
-              <div class="markdown-item">
-                <div class="markdown-syntax">Images</div>
-                <div class="markdown-desc">
-                  Use the image button to insert images
-                </div>
-              </div>
-              <div class="markdown-item">
-                <div class="markdown-syntax">Lists</div>
-                <div class="markdown-desc">
-                  Create ordered or bulleted lists with the list buttons
-                </div>
-              </div>
-              <div class="markdown-item">
-                <div class="markdown-syntax">Blockquotes</div>
-                <div class="markdown-desc">
-                  Use the blockquote button for quotes
-                </div>
-              </div>
-              <div class="markdown-item">
-                <div class="markdown-syntax">Code Blocks</div>
-                <div class="markdown-desc">
-                  Use the code block button for code snippets
-                </div>
-              </div>
-              <div class="markdown-item">
-                <div class="markdown-syntax">Clear Formatting</div>
-                <div class="markdown-desc">
-                  Use the clean button to remove formatting
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Image Manager -->
-        <div class="editor-card mt-4">
-          <div class="editor-card-header">
-            <h5>Image Manager</h5>
-          </div>
-          <div class="editor-card-body">
-            <p>
-              Uploaded images for this post. Click to insert into content at
-              cursor position.
-            </p>
-            <div id="imageGallery" class="row row-cols-2 g-2">
-              <!-- Images will be loaded here -->
-              <div class="col text-center text-muted">
-                <div class="p-3 border rounded">
-                  <i class="fas fa-image fa-2x mb-2"></i>
-                  <p>No images yet</p>
-                </div>
-              </div>
-            </div>
+          <div class="posts-list-body">
+            <div id="postsList" class="list-group"></div>
           </div>
         </div>
       </div>
@@ -429,11 +391,16 @@ const categories = [
 </AdminLayout>
 
 <style>
+  .blog-editor-container {
+    padding: 1rem;
+  }
+
   .editor-card {
     background-color: #1a1a1a;
-    border: 1px solid #333;
     border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    margin-bottom: 20px;
   }
 
   .editor-card-header {
@@ -446,339 +413,1731 @@ const categories = [
     padding: 1.5rem;
   }
 
-  .nav-tabs {
-    border-bottom: none;
+  .posts-list-card {
+    background-color: #1a1a1a;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
 
-  .nav-tabs .nav-link {
-    color: var(--gray-light);
+  .posts-list-header {
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .posts-list-body {
+    padding: 1rem;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+  }
+
+  #postsList .list-group-item {
+    background-color: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e6e6e6;
+    margin-bottom: 0.5rem;
+    transition: background-color 0.2s;
+  }
+
+  #postsList .list-group-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  #postsList .list-group-item .delete-post {
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+
+  #postsList .list-group-item:hover .delete-post {
+    opacity: 1;
+  }
+
+  /* Image gallery styles - complete redesign */
+  #imageGallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    min-height: 100px;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .image-gallery-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    min-height: 100px;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .image-item {
+    position: relative;
+    border-radius: 8px;
+    background-color: #2a2a2a;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* Fixed dimensions for consistency */
+    height: 220px;
+    width: 100%;
+    margin: 0;
+    max-width: 100%;
+  }
+
+  .image-item .image-container {
+    height: 120px;
+    overflow: hidden;
+    position: relative;
+    background-color: #1a1a1a;
+  }
+
+  .image-item .image-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #1a1a1a;
+    color: #4a5568;
+    font-size: 1.5rem;
+  }
+
+  .image-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: transform 0.2s ease;
+  }
+
+  .image-item img:hover {
+    transform: scale(1.05);
+  }
+
+  .image-item .image-info {
+    background: rgba(0, 0, 0, 0.7);
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    color: white;
+    z-index: 2;
+  }
+
+  .image-item .markdown-display {
+    background: rgba(30, 30, 30, 0.95);
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    color: #f8f9fa;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 2;
+  }
+
+  .image-item .markdown-display code {
+    background-color: rgba(0, 0, 0, 0.4);
+    padding: 3px 5px;
+    border-radius: 3px;
+    color: #17a2b8;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100% - 40px);
+    font-size: 0.7rem;
+    font-family: monospace;
+  }
+
+  .image-item .markdown-display button {
+    padding: 0 6px;
+    height: 24px;
+    line-height: 24px;
+    background-color: #343a40;
     border: none;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    padding: 0.5rem 1rem;
   }
 
-  .nav-tabs .nav-link:hover {
-    color: var(--primary);
-    border-color: transparent;
+  .image-item .image-id {
+    display: inline-block;
+    background-color: #17a2b8;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .nav-tabs .nav-link.active {
-    color: var(--primary);
-    background-color: transparent;
-    border-bottom: 2px solid var(--primary);
+  .image-item .image-controls {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 8px;
+    z-index: 2;
+    margin-top: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
   }
 
-  .preview-container {
-    background-color: #222;
-    padding: 2rem;
+  .image-item .image-controls button {
+    padding: 4px 6px;
+    font-size: 0.7rem;
+    border: none;
+    margin: 0;
+    border-radius: 3px;
+    flex: 1;
+    min-width: 30px;
+    background-color: #444;
+    color: #fff;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+
+  .image-item .image-controls button:hover {
+    background-color: #666;
+  }
+
+  .image-item .image-controls .html-left {
+    background-color: #2c5282;
+  }
+
+  .image-item .image-controls .html-center {
+    background-color: #44337a;
+  }
+
+  .image-item .image-controls .html-right {
+    background-color: #702459;
+  }
+
+  .image-item .image-controls .image-insert {
+    background-color: #2b6cb0;
+  }
+
+  .image-item .image-controls .image-copy-id {
+    background-color: #4a5568;
+  }
+
+  .image-item .image-controls .image-delete {
+    background-color: #c53030;
+  }
+
+  .image-id-display {
+    background-color: #1a1a1a;
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    font-family: monospace;
+  }
+
+  .image-id-display .badge {
+    font-family: monospace;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    display: inline-block;
+    word-break: break-all;
+  }
+
+  #coverImagePreview {
+    max-width: 300px;
+    margin-top: 1rem;
+  }
+
+  #coverImagePreview img {
+    width: 100%;
+    height: auto;
     border-radius: 4px;
   }
 
-  .preview-meta {
-    color: var(--gray-light);
+  .editor-guide {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 15px;
+  }
+
+  .editor-guide-toggle {
+    padding: 10px 15px;
+    background-color: rgba(0, 0, 0, 0.3);
+    cursor: pointer;
     font-size: 0.9rem;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+  }
+
+  .editor-guide-toggle i {
+    margin-right: 8px;
+  }
+
+  .editor-guide-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .editor-guide-content {
+    padding: 15px;
+    font-size: 0.9rem;
+    background-color: rgba(0, 0, 0, 0.15);
+  }
+
+  .guide-list {
+    margin-bottom: 15px;
+  }
+
+  .guide-list li {
+    margin-bottom: 6px;
+  }
+
+  .markdown-example {
+    font-size: 0.8rem;
+    line-height: 1.4;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 0;
+    white-space: pre-wrap;
+  }
+
+  .markdown-preview {
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 1.5rem;
+    border-radius: 4px;
+    min-height: 400px;
+  }
+
+  .markdown-preview h1,
+  .markdown-preview h2,
+  .markdown-preview h3,
+  .markdown-preview h4,
+  .markdown-preview h5,
+  .markdown-preview h6 {
+    margin-top: 1.5rem;
     margin-bottom: 1rem;
   }
 
-  .markdown-help {
+  .markdown-preview p {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+  }
+
+  .markdown-preview ul,
+  .markdown-preview ol {
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+  }
+
+  .markdown-preview img {
+    max-width: 100%;
+    height: auto;
+    margin: 1rem 0;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease-in-out;
+    display: block;
+  }
+
+  .markdown-preview img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+  }
+
+  /* Toast notifications */
+  .toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 350px;
+  }
+
+  .toast {
+    display: flex;
+    align-items: center;
+    background-color: #2a2a2a;
+    color: #fff;
+    padding: 12px 15px;
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .toast-success {
+    border-left: 4px solid #28a745;
+  }
+
+  .toast-error {
+    border-left: 4px solid #dc3545;
+  }
+
+  .toast-info {
+    border-left: 4px solid #17a2b8;
+  }
+
+  .toast-icon {
+    margin-right: 12px;
+    font-size: 1.2rem;
+  }
+
+  .toast-message {
+    flex: 1;
+  }
+
+  .toast-close {
+    cursor: pointer;
     font-size: 0.9rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
   }
 
-  .markdown-item {
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid #333;
+  .toast-close:hover {
+    opacity: 1;
   }
 
-  .markdown-syntax {
-    font-family: monospace;
-    color: var(--primary);
-    margin-bottom: 0.25rem;
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
-  .markdown-desc {
-    color: var(--gray-light);
+  @keyframes fadeOut {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+  }
+
+  /* Markdown reference card */
+  .markdown-reference-card {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1050;
+    width: 350px;
+    background-color: #2d3748;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    transform: translateY(120%);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #f0f0f0;
+  }
+
+  .markdown-reference-card.active {
+    transform: translateY(0);
+  }
+
+  .markdown-reference-card .card-header {
+    background-color: #1a202c;
+    color: white;
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .markdown-reference-card .card-body {
+    padding: 15px;
+  }
+
+  .markdown-reference-card .ref-img {
+    width: 100%;
+    height: 120px;
+    object-fit: contain;
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+
+  .markdown-reference-card input {
+    background-color: #1a202c;
+    color: #e2e8f0;
+    border: 1px solid #4a5568;
+  }
+
+  .markdown-reference-card code {
+    background-color: #1a202c;
+    color: #68d391;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+  }
+
+  .markdown-reference-card .btn-close {
+    color: white;
+    opacity: 0.7;
+  }
+
+  .markdown-reference-card .btn-close:hover {
+    opacity: 1;
+  }
+
+  /* File upload section styling */
+  .image-upload-section {
+    margin-bottom: 2rem;
+  }
+
+  .image-upload-section label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+
+  /* Responsive adjustments for image gallery */
+  @media (max-width: 768px) {
+    .image-gallery-container {
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 15px;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .image-gallery-container {
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .image-item {
+      height: 200px;
+    }
+
+    .image-item .image-container {
+      height: 100px;
+    }
   }
 </style>
 
-<!-- Include Quill HTML editor styles and script -->
-<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
-<script is:inline src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-
-<!-- Initialize Quill editor -->
 <script>
-  // Declare global Quill type
-  declare const Quill: any;
+  // Define interface for API configuration
+  interface ApiConfig {
+    baseUrl: string;
+    authTokenName: string;
+    placeholderImages: string[];
+  }
 
   // Extend Window interface for custom properties
   declare global {
     interface Window {
+      apiConfig: ApiConfig;
+      showToast?: (message: string, type: "success" | "error" | "info") => void;
       loadPostContent: (htmlContent: string) => void;
+      quill: any;
+      lastInsertedImage: HTMLImageElement | null;
+      loadPosts?: () => void;
     }
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
-    if (document.getElementById("editor")) {
-      const quill = new Quill("#editor", {
-        theme: "snow",
-        modules: {
-          toolbar: "#toolbar",
-        },
-      });
+  // Initialize API configuration
+  if (!window.apiConfig) {
+    window.apiConfig = {
+      baseUrl: import.meta.env.PUBLIC_API_URL || "http://localhost:8001",
+      authTokenName: import.meta.env.PUBLIC_AUTH_TOKEN_NAME || "adminToken",
+      placeholderImages: [
+        "/admin-dashboard/placeholder-1.jpg",
+        "/admin-dashboard/placeholder-2.jpg",
+        "/admin-dashboard/placeholder-3.jpg",
+      ],
+    };
+  }
 
-      // Handle form submission - store HTML content in hidden input
-      const postForm = document.getElementById("postForm");
-      if (postForm) {
-        postForm.addEventListener("submit", function () {
-          const contentInput = document.getElementById("postContent");
-          if (contentInput instanceof HTMLInputElement) {
-            contentInput.value = quill.root.innerHTML;
+  document.addEventListener("DOMContentLoaded", () => {
+    const postForm = document.getElementById("postForm") as HTMLFormElement;
+    const imageUpload = document.getElementById(
+      "imageUpload"
+    ) as HTMLInputElement;
+    const imageGallery = document.getElementById("imageGallery");
+    const coverImageInput = document.getElementById(
+      "coverImage"
+    ) as HTMLInputElement;
+    const coverImagePreview = document.getElementById("coverImagePreview");
+    const removeCoverBtn = document.getElementById("removeCoverBtn");
+    const uploadCoverBtn = document.getElementById("uploadCoverBtn");
+    const uploadImagesBtn = document.getElementById("uploadImagesBtn");
+    const titleInput = document.getElementById("title") as HTMLInputElement;
+    const taglineInput = document.getElementById("tagline") as HTMLInputElement;
+    const contentInput = document.getElementById(
+      "content"
+    ) as HTMLTextAreaElement;
+    const previewTab = document.getElementById("preview-tab");
+    const editorGuideToggle = document.getElementById("editorGuideToggle");
+    const editorGuideContent = document.getElementById("editorGuideContent");
+    const postsList = document.getElementById("postsList");
+    const refreshPostsBtn = document.getElementById("refreshPostsBtn");
+    const deletePostBtn = document.getElementById("deletePostBtn");
+    const newPostBtn = document.getElementById("newPostBtn");
+
+    // Current post ID for editing
+    let currentPostId: string | null = null;
+
+    // Create toast container if it doesn't exist
+    function createToastContainer() {
+      const container = document.createElement("div");
+      container.className = "toast-container";
+      document.body.appendChild(container);
+      return container;
+    }
+
+    // Initialize toast notification system FIRST
+    setupToastSystem();
+
+    // Safe toast function that won't break if window.showToast isn't ready
+    function safeShowToast(
+      message: string,
+      type: "success" | "error" | "info" = "info"
+    ) {
+      console.log(`[Toast] ${type.toUpperCase()}: ${message}`);
+      if (typeof window.showToast === "function") {
+        try {
+          window.showToast(message, type);
+        } catch (e) {
+          console.error("Error showing toast:", e);
+        }
+      } else {
+        // Fallback if toast system is not ready
+        const toastContainer =
+          document.querySelector(".toast-container") || createToastContainer();
+        const toast = document.createElement("div");
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+          <div class="toast-message">${message}</div>
+        `;
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+          if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
           }
-        });
+        }, 3000);
+      }
+    }
+
+    // Now that toast system is initialized, load posts
+    loadRecentPosts();
+
+    // Add event listener for refresh button
+    refreshPostsBtn?.addEventListener("click", () => {
+      loadRecentPosts();
+    });
+
+    // Add event listener for new post button
+    newPostBtn?.addEventListener("click", () => {
+      clearForm();
+      currentPostId = null;
+      if (deletePostBtn) {
+        deletePostBtn.classList.add("d-none");
+      }
+      // Focus on title field
+      if (titleInput) {
+        titleInput.focus();
+      }
+    });
+
+    // Initialize toast notification system
+    function setupToastSystem() {
+      // Create toast container if it doesn't exist
+      let toastContainer = document.querySelector(".toast-container");
+      if (!toastContainer) {
+        toastContainer = document.createElement("div");
+        toastContainer.className = "toast-container";
+        document.body.appendChild(toastContainer);
       }
 
-      // Handle post loading - populate editor with HTML content
-      window.loadPostContent = function (htmlContent: string) {
-        quill.root.innerHTML = htmlContent;
+      // Global function to show toast notifications
+      window.showToast = (message, type = "info") => {
+        const toast = document.createElement("div");
+        toast.className = `toast toast-${type}`;
+
+        let iconClass = "fas fa-info-circle";
+        if (type === "success") iconClass = "fas fa-check-circle";
+        if (type === "error") iconClass = "fas fa-exclamation-circle";
+
+        toast.innerHTML = `
+          <div class="toast-icon"><i class="${iconClass}"></i></div>
+          <div class="toast-message">${message}</div>
+          <div class="toast-close"><i class="fas fa-times"></i></div>
+        `;
+
+        toastContainer.appendChild(toast);
+
+        // Add click event to close button
+        const closeBtn = toast.querySelector(".toast-close");
+        if (closeBtn) {
+          closeBtn.addEventListener("click", () => {
+            toast.style.animation = "fadeOut 0.3s ease-in-out forwards";
+            setTimeout(() => {
+              if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+              }
+            }, 300);
+          });
+        }
+
+        // Auto-remove toast after 5 seconds
+        setTimeout(() => {
+          toast.style.animation = "fadeOut 0.3s ease-in-out forwards";
+          setTimeout(() => {
+            if (toast.parentNode) {
+              toast.parentNode.removeChild(toast);
+            }
+          }, 300);
+        }, 5000);
       };
     }
-  });
-</script>
 
-<script>
-  import { apiRequest } from "../utils/api";
+    // Function to load recent posts
+    async function loadRecentPosts() {
+      if (!postsList) return;
 
-  document.addEventListener("DOMContentLoaded", async function () {
-    // Blog post interface
-    interface BlogPost {
-      _id: string;
-      title: string;
-      tagline: string;
-      author: string;
-      content: string; // This will now be HTML content
-      cover_image_id: string;
-      image_ids: string[];
-      category?: string; // Added category property
-      created_at: string;
-      updated_at: string;
-    }
-
-    let currentPostId: string | null = null;
-    const postForm = document.getElementById("postForm") as HTMLFormElement;
-    const postIdField = document.getElementById("postId") as HTMLInputElement;
-    const titleField = document.getElementById("postTitle") as HTMLInputElement;
-    const taglineField = document.getElementById(
-      "postTagline"
-    ) as HTMLInputElement;
-    const authorField = document.getElementById(
-      "postAuthor"
-    ) as HTMLInputElement;
-    const categoryField = document.getElementById(
-      "postCategory"
-    ) as HTMLSelectElement;
-    const coverImageField = document.getElementById(
-      "postCoverImage"
-    ) as HTMLInputElement;
-    const inlineImagesField = document.getElementById(
-      "postInlineImages"
-    ) as HTMLInputElement;
-
-    // Load all posts into the table
-    const loadPosts = async () => {
       try {
-        const result = await apiRequest<{
-          posts: BlogPost[];
-          total: number;
-          total_pages: number;
-        }>("/admin/blogs", { withCredentials: false });
-        const posts = result.posts;
+        // Use a safe toast function that won't break if window.showToast isn't ready
+        safeShowToast("Loading posts...", "info");
+        postsList.innerHTML =
+          '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
 
-        const tableBody = document.getElementById("postsTableBody");
-        if (!tableBody) return;
+        const response = await fetch(
+          `${window.apiConfig.baseUrl}/admin/blogs`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem(window.apiConfig.authTokenName)}`,
+            },
+          }
+        );
 
-        tableBody.innerHTML = "";
+        if (!response.ok) {
+          throw new Error(`Failed to load posts: ${response.statusText}`);
+        }
 
-        if (posts.length === 0) {
-          tableBody.innerHTML = `
-            <tr>
-              <td colspan="5" class="text-center">No posts found</td>
-            </tr>
-          `;
+        const data = await response.json();
+
+        if (!data.posts || data.posts.length === 0) {
+          postsList.innerHTML =
+            '<div class="text-center text-muted">No posts found</div>';
           return;
         }
 
-        posts.forEach((post) => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${post.title}</td>
-            <td>${post.author || "Anonymous"}</td>
-            <td>${post.category || "Uncategorized"}</td>
-            <td>${new Date(post.created_at).toLocaleDateString()}</td>
-            <td>
-              <button class="btn btn-sm btn-primary edit-post" data-id="${
-                post._id
-              }">Edit</button>
-              <button class="btn btn-sm btn-danger delete-post" data-id="${
-                post._id
-              }">Delete</button>
-            </td>
-          `;
-          tableBody.appendChild(row);
-        });
+        // Sort posts by date, newest first
+        const posts = data.posts.sort(
+          (a: any, b: any) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
 
-        // Add event listeners to the edit and delete buttons
-        document.querySelectorAll(".edit-post").forEach((button) => {
-          button.addEventListener("click", async () => {
-            const postId = (button as HTMLElement).dataset.id;
-            if (postId) loadPostForEdit(postId);
-          });
-        });
+        // Clear and populate the posts list
+        postsList.innerHTML = "";
 
-        document.querySelectorAll(".delete-post").forEach((button) => {
-          button.addEventListener("click", async () => {
-            const postId = (button as HTMLElement).dataset.id;
-            if (
-              postId &&
-              confirm("Are you sure you want to delete this post?")
-            ) {
-              try {
-                await apiRequest(`/admin/blogs/${postId}`, {
-                  method: "DELETE",
-                  withCredentials: false,
-                });
-                alert("Post deleted successfully!");
-                loadPosts(); // Reload the posts
-              } catch (error) {
-                console.error("Error deleting post:", error);
-                alert("Failed to delete post.");
-              }
-            }
-          });
-        });
-      } catch (error) {
-        console.error("Error loading posts:", error);
-        alert("Failed to load posts. Please check the console for details.");
-      }
-    };
+        posts.forEach((post: any) => {
+          const postDate = new Date(post.created_at).toLocaleDateString();
+          const postItem = document.createElement("a");
+          postItem.className =
+            "list-group-item list-group-item-action d-flex justify-content-between align-items-center";
+          postItem.href = "javascript:void(0)";
+          postItem.dataset.id = post._id;
 
-    // Load a post for editing
-    const loadPostForEdit = async (postId: string) => {
-      try {
-        const post = await apiRequest<BlogPost>(`/admin/blogs/${postId}`, {
-          withCredentials: false,
-        });
-
-        // Set the post ID in the hidden field
-        postIdField.value = post._id;
-        currentPostId = post._id;
-
-        // Populate the form fields
-        titleField.value = post.title;
-        taglineField.value = post.tagline || "";
-        authorField.value = post.author || "";
-        // Handle category - we would need to match the category ID
-
-        // Load HTML content into the editor
-        if (window.loadPostContent) {
-          window.loadPostContent(post.content);
-        }
-
-        // Switch to the edit tab
-        const editTab = document.getElementById("edit-tab");
-        if (editTab) {
-          (editTab as HTMLElement).click();
-        }
-      } catch (error) {
-        console.error("Error loading post for edit:", error);
-        alert("Failed to load post. Please check the console for details.");
-      }
-    };
-
-    // Handle form submission
-    if (postForm) {
-      postForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        // Get content from the hidden field that Quill populates
-        const contentInput = document.getElementById(
-          "postContent"
-        ) as HTMLInputElement;
-        const content = contentInput.value;
-
-        if (!titleField.value || !content) {
-          alert("Title and content are required!");
-          return;
-        }
-
-        const postData = {
-          title: titleField.value,
-          tagline: taglineField.value,
-          author: authorField.value,
-          content: content, // This is now HTML content
-          // Handle category, images, etc.
-        };
-
-        try {
-          if (currentPostId) {
-            // Update existing post
-            await apiRequest(`/admin/blogs/${currentPostId}`, {
-              method: "PUT",
-              body: postData,
-              withCredentials: false,
-            });
-            alert("Post updated successfully!");
-          } else {
-            // Create new post
-            await apiRequest("/admin/blogs", {
-              method: "POST",
-              body: postData,
-              withCredentials: false,
-            });
-            alert("Post created successfully!");
+          let truncatedTitle = post.title;
+          if (truncatedTitle.length > 30) {
+            truncatedTitle = truncatedTitle.substring(0, 27) + "...";
           }
 
-          // Clear the form and reload posts
-          clearForm();
-          loadPosts();
-        } catch (error) {
-          console.error("Error saving post:", error);
-          alert("Failed to save post. Please check the console for details.");
-        }
-      });
-    }
+          postItem.innerHTML = `
+            <div>
+              <div class="fw-bold">${truncatedTitle}</div>
+              <small class="text-muted">${postDate}</small>
+            </div>
+            <div>
+              <button class="btn btn-sm btn-outline-danger delete-post" data-id="${post._id}">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          `;
 
-    // Clear the form
-    const clearForm = () => {
-      postForm.reset();
-      postIdField.value = "";
-      currentPostId = null;
+          postsList.appendChild(postItem);
 
-      // Clear the Quill editor
-      if (window.loadPostContent) {
-        window.loadPostContent("");
+          // Add click event to load post for editing
+          postItem.addEventListener("click", (e) => {
+            if (!(e.target as HTMLElement).closest(".delete-post")) {
+              loadPostForEdit(post._id);
+            }
+          });
+
+          // Add click event for delete button
+          const deleteBtn = postItem.querySelector(".delete-post");
+          deleteBtn?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            confirmDeletePost(post._id);
+          });
+        });
+
+        safeShowToast("Posts loaded successfully", "success");
+      } catch (error) {
+        console.error("Error loading posts:", error);
+        postsList.innerHTML =
+          '<div class="text-center text-danger">Failed to load posts</div>';
+        safeShowToast(
+          `Failed to load posts: ${error instanceof Error ? error.message : "Unknown error"}`,
+          "error"
+        );
       }
-    };
-
-    // Handle the clear form button
-    const clearFormBtn = document.getElementById("clearFormBtn");
-    if (clearFormBtn) {
-      clearFormBtn.addEventListener("click", clearForm);
     }
 
-    // Handle the new post button
-    const newPostBtn = document.getElementById("newPostBtn");
-    if (newPostBtn) {
-      newPostBtn.addEventListener("click", () => {
-        clearForm();
-        const editTab = document.getElementById("edit-tab");
-        if (editTab) {
-          (editTab as HTMLElement).click();
+    // Function to load a post for editing
+    async function loadPostForEdit(postId: string) {
+      try {
+        safeShowToast("Loading post...", "info");
+
+        const response = await fetch(
+          `${window.apiConfig.baseUrl}/admin/blogs/${postId}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem(window.apiConfig.authTokenName)}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to load post: ${response.statusText}`);
+        }
+
+        const post = await response.json();
+
+        // Set current post ID
+        currentPostId = postId;
+
+        // Process content to fix any problematic image references
+        if (post.content) {
+          // Only replace localhost:8082 references with placeholders
+          post.content = post.content.replace(
+            /(!\[[^\]]*\]\()(?:https?:\/\/localhost:8082\/[^)]+)(\))/gi,
+            (match: string, prefix: string, suffix: string): string => {
+              const placeholderNum = Math.floor(Math.random() * 3) + 1;
+              return `${prefix}${window.apiConfig.baseUrl}/admin-dashboard/placeholder-${placeholderNum}.jpg${suffix}`;
+            }
+          );
+
+          // Fix direct HTML image tags pointing to localhost:8082
+          post.content = post.content.replace(
+            /<img\s+[^>]*src=["']https?:\/\/localhost:8082\/uploads\/([^"']+)["'][^>]*>/gi,
+            (match: string, imageId: string): string => {
+              const cleanImageId = imageId
+                .replace(/^\/uploads\//, "")
+                .replace(/^uploads\//, "");
+              return match.replace(
+                /src=["']https?:\/\/localhost:8082\/uploads\/[^"']+["']/gi,
+                `src="${window.apiConfig.baseUrl}/uploads/${cleanImageId}"`
+              );
+            }
+          );
+
+          // Don't replace other image references
+          // Fix any simple image IDs to use full URL paths
+          post.content = post.content.replace(
+            /(!\[[^\]]*\]\()(\d{13,}-\d{8,})(\))/gi,
+            (
+              match: string,
+              prefix: string,
+              imageId: string,
+              suffix: string
+            ): string => {
+              return `${prefix}${window.apiConfig.baseUrl}/uploads/${imageId}${suffix}`;
+            }
+          );
+        }
+
+        // Populate form fields
+        if (titleInput) titleInput.value = post.title || "";
+        if (taglineInput) taglineInput.value = post.tagline || "";
+        if (contentInput) contentInput.value = post.content || "";
+
+        // Show delete button
+        if (deletePostBtn) {
+          deletePostBtn.classList.remove("d-none");
+          deletePostBtn.dataset.id = postId;
+        }
+
+        // Handle cover image if exists
+        if (post.cover_image_id && coverImagePreview) {
+          const img = coverImagePreview.querySelector(
+            "img"
+          ) as HTMLImageElement;
+          if (img) {
+            // For displaying in admin panel, use the full URL derived from the ID
+            const imageId = post.cover_image_id;
+
+            // Clean the image ID to avoid duplication of /uploads/
+            const cleanImageId = imageId
+              .replace(/^\/uploads\//, "")
+              .replace(/^uploads\//, "");
+
+            // If it's already a URL, use it as is, otherwise construct it
+            const imageUrl =
+              imageId.startsWith("http") || imageId.startsWith("/")
+                ? imageId
+                : `${window.apiConfig.baseUrl}/uploads/${cleanImageId}`;
+
+            img.src = imageUrl;
+            // Store the clean ID for future use
+            img.dataset.imageId = cleanImageId;
+
+            // Add ID display next to image
+            const idDisplay = document.createElement("div");
+            idDisplay.className = "image-id-display mt-2";
+            idDisplay.innerHTML = `<span class="badge bg-info">Image ID: ${cleanImageId}</span>`;
+
+            // Remove any existing ID display
+            const existingIdDisplay =
+              coverImagePreview.querySelector(".image-id-display");
+            if (existingIdDisplay) {
+              existingIdDisplay.remove();
+            }
+
+            // Add the new ID display before the remove button
+            const removeBtn =
+              coverImagePreview.querySelector("#removeCoverBtn");
+            if (removeBtn) {
+              coverImagePreview.insertBefore(idDisplay, removeBtn);
+            } else {
+              coverImagePreview.appendChild(idDisplay);
+            }
+          }
+        }
+
+        // Handle images in content
+        if (imageGallery && post.image_ids && Array.isArray(post.image_ids)) {
+          // Clear existing gallery
+          imageGallery.innerHTML = "";
+
+          // Add each image ID to gallery
+          post.image_ids.forEach((id: string) => {
+            // Convert image ID to URL
+            const url = `${window.apiConfig.baseUrl}/uploads/${id}`;
+            addImageToGallery(url);
+          });
+        }
+
+        // Update preview to show images
+        updatePreview();
+
+        // Scroll to editor
+        document
+          .querySelector(".editor-card")
+          ?.scrollIntoView({ behavior: "smooth" });
+
+        safeShowToast("Post loaded successfully", "success");
+      } catch (error) {
+        console.error("Error loading post:", error);
+        safeShowToast(
+          `Failed to load post: ${error instanceof Error ? error.message : "Unknown error"}`,
+          "error"
+        );
+      }
+    }
+
+    // Function to confirm post deletion
+    function confirmDeletePost(postId: string) {
+      if (
+        confirm(
+          "Are you sure you want to delete this post? This action cannot be undone."
+        )
+      ) {
+        deletePost(postId);
+      }
+    }
+
+    // Function to delete a post
+    async function deletePost(postId: string) {
+      try {
+        safeShowToast("Deleting post...", "info");
+
+        const response = await fetch(
+          `${window.apiConfig.baseUrl}/admin/blogs/${postId}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem(window.apiConfig.authTokenName)}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to delete post: ${response.statusText}`);
+        }
+
+        // If the deleted post is currently being edited, clear the form
+        if (currentPostId === postId) {
+          clearForm();
+          currentPostId = null;
+          if (deletePostBtn) {
+            deletePostBtn.classList.add("d-none");
+          }
+        }
+
+        // Reload posts list
+        loadRecentPosts();
+
+        safeShowToast("Post deleted successfully", "success");
+      } catch (error) {
+        console.error("Error deleting post:", error);
+        safeShowToast(
+          `Failed to delete post: ${error instanceof Error ? error.message : "Unknown error"}`,
+          "error"
+        );
+      }
+    }
+
+    // Add event listener for delete button in the editor
+    deletePostBtn?.addEventListener("click", () => {
+      if (currentPostId) {
+        confirmDeletePost(currentPostId);
+      }
+    });
+
+    // Toggle editor guide
+    editorGuideToggle?.addEventListener("click", () => {
+      if (editorGuideContent) {
+        const isVisible = editorGuideContent.style.display !== "none";
+        editorGuideContent.style.display = isVisible ? "none" : "block";
+      }
+    });
+
+    // Update preview tab content when clicked
+    previewTab?.addEventListener("click", () => {
+      updatePreview();
+    });
+
+    // Function to update preview
+    function updatePreview() {
+      const previewTitle = document.getElementById("previewTitle");
+      const previewTagline = document.getElementById("previewTagline");
+      const previewCoverImage = document.getElementById("previewCoverImage");
+      const previewContent = document.getElementById("previewContent");
+
+      if (previewTitle) {
+        previewTitle.textContent = titleInput.value || "Title Preview";
+      }
+
+      if (previewTagline) {
+        previewTagline.textContent = taglineInput.value || "Tagline preview";
+      }
+
+      if (previewCoverImage) {
+        const coverImg = previewCoverImage.querySelector(
+          "img"
+        ) as HTMLImageElement;
+        const coverPreviewImg = coverImagePreview?.querySelector(
+          "img"
+        ) as HTMLImageElement;
+
+        if (coverImg && coverPreviewImg && coverPreviewImg.dataset.imageId) {
+          // Use imageId to construct path
+          const imageId = coverPreviewImg.dataset.imageId;
+
+          // Check if the imageId already contains /uploads/ to avoid duplication
+          const cleanImageId = imageId
+            .replace(/^\/uploads\//, "")
+            .replace(/^uploads\//, "");
+
+          // Ensure we have a full URL path
+          coverImg.src = `${window.apiConfig.baseUrl}/uploads/${cleanImageId}`;
+          previewCoverImage.classList.remove("d-none");
+        } else if (coverImg && coverPreviewImg && coverPreviewImg.src) {
+          // Fallback to the src if available
+          coverImg.src = coverPreviewImg.src;
+          previewCoverImage.classList.remove("d-none");
+        } else {
+          previewCoverImage.classList.add("d-none");
+        }
+
+        // Add error handler for cover image
+        if (coverImg) {
+          coverImg.onerror = function () {
+            console.error("Failed to load cover image in preview:", this.src);
+            this.src =
+              "/admin-dashboard/placeholder-" +
+              (Math.floor(Math.random() * 3) + 1) +
+              ".jpg";
+          };
+        }
+      }
+
+      if (previewContent && contentInput.value) {
+        // Get the raw content
+        let markdownContent = contentInput.value;
+
+        // Process any image IDs and convert them to URLs if they're not already full URLs
+        markdownContent = markdownContent.replace(
+          /!\[(.*?)\]\((?!https?:\/\/)([^\/\s\)]+)(?:\)?|(?:\s[^\)]*\)))/gi,
+          (match, alt, imageId, ext) => {
+            // Skip if it's already a path with / in it (likely a server path)
+            if (imageId.includes("/")) {
+              return match;
+            }
+
+            // Check if it matches the ID pattern (numbers-numbers)
+            if (/^\d{13,}-\d{8,}$/.test(imageId)) {
+              // For preview use full URL
+              return `![${alt}](${window.apiConfig.baseUrl}/uploads/${imageId}${ext || ""})`;
+            }
+
+            // Return the original if it doesn't match our patterns
+            return match;
+          }
+        );
+
+        // Also ensure image references in HTML tags use full URLs
+        markdownContent = markdownContent.replace(
+          /<img\s+src=["']\/uploads\/([^"']+)["']/gi,
+          (match, imageId) => {
+            // Clean the imageId to avoid duplicate /uploads/ paths
+            const cleanImageId = imageId
+              .replace(/^\/uploads\//, "")
+              .replace(/^uploads\//, "");
+            return `<img src="${window.apiConfig.baseUrl}/uploads/${cleanImageId}"`;
+          }
+        );
+
+        // Simple markdown to HTML conversion
+        let html = markdownContent
+          // Headers
+          .replace(/^# (.*$)/gm, "<h1>$1</h1>")
+          .replace(/^## (.*$)/gm, "<h2>$1</h2>")
+          .replace(/^### (.*$)/gm, "<h3>$1</h3>")
+          // Bold and italic
+          .replace(/\*\*(.*)\*\*/gm, "<strong>$1</strong>")
+          .replace(/\*(.*)\*/gm, "<em>$1</em>")
+          // Links
+          .replace(
+            /\[([^\]]+)\]\(([^)]+)\)/gm,
+            '<a href="$2" target="_blank">$1</a>'
+          )
+          // Images - add error handling
+          .replace(
+            /!\[([^\]]+)\]\(([^)]+)\)/gm,
+            '<img src="$2" alt="$1" class="img-fluid" onerror="this.onerror=null; this.src=\'/admin-dashboard/placeholder-\' + (Math.floor(Math.random() * 3) + 1) + \'.jpg\';">'
+          )
+          // Lists
+          .replace(/^\s*\n\*/gm, "<ul>\n*")
+          .replace(/^(\*.+)\s*\n([^\*])/gm, "$1\n</ul>\n\n$2")
+          .replace(/^\*(.+)/gm, "<li>$1</li>")
+          // Paragraphs
+          .replace(/^\s*\n\d\./gm, "<ol>\n1.")
+          .replace(/^(\d\..+)\s*\n([^\d\.])/gm, "$1\n</ol>\n\n$2")
+          .replace(/^\d\.(.+)/gm, "<li>$1</li>")
+          // Paragraphs
+          .replace(/^\s*\n\n/gm, "</p>\n\n<p>")
+          .replace(/^\s*\n/gm, "<br>");
+
+        // Wrap with paragraph tags if not already
+        if (!html.startsWith("<h") && !html.startsWith("<p>")) {
+          html = "<p>" + html + "</p>";
+        }
+
+        previewContent.innerHTML = html;
+
+        // Add click handlers to open images in new tabs
+        const images = previewContent.querySelectorAll("img");
+        images.forEach((img) => {
+          img.style.cursor = "pointer";
+          img.addEventListener("click", () => {
+            window.open(img.src, "_blank");
+          });
+        });
+      } else if (previewContent) {
+        previewContent.innerHTML = "<p>No content to preview</p>";
+      }
+    }
+
+    // Helper function to extract image ID from different URL patterns
+    function extractImageId(url: string): string | null {
+      if (!url) return null;
+
+      // Clean up the URL first
+      url = url.trim();
+      console.log("Extracting ID from URL:", url);
+
+      // If it's the full URL from the server response
+      if (url.startsWith(window.apiConfig.baseUrl)) {
+        url = url.replace(window.apiConfig.baseUrl, "");
+      }
+
+      // If it's a full URL with /uploads/ path, extract the ID part
+      const uploadsMatch = url.match(/\/uploads\/([^\/\?\#]+)/);
+      if (uploadsMatch && uploadsMatch[1]) {
+        const imageId = uploadsMatch[1];
+        console.log("Extracted ID from uploads path:", imageId);
+        return imageId;
+      }
+
+      // If it's just a relative path like /uploads/ID
+      if (url.startsWith("/uploads/")) {
+        const parts = url.split("/");
+        const imageId = parts[parts.length - 1];
+        console.log("Extracted ID from relative path:", imageId);
+        return imageId;
+      }
+
+      // If it's already just an ID (no slashes)
+      if (!url.includes("/")) {
+        const imageId = url;
+        console.log("URL is already an ID:", imageId);
+        return imageId;
+      }
+
+      // Try to get the last part of any path as a fallback
+      const parts = url.split("/");
+      const imageId = parts.length > 0 ? parts[parts.length - 1] : null;
+      console.log("Extracted ID as last path segment:", imageId);
+
+      return imageId;
+    }
+
+    // Handle cover image upload
+    uploadCoverBtn?.addEventListener("click", async () => {
+      if (coverImageInput.files && coverImageInput.files[0]) {
+        const file = coverImageInput.files[0];
+        const formData = new FormData();
+        formData.append("image", file);
+
+        // Debug: Log file details
+        console.log("File to upload:", {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          lastModified: new Date(file.lastModified),
+        });
+
+        // Debug: Verify FormData content
+        console.log("FormData entries:");
+        for (const pair of formData.entries()) {
+          console.log(pair[0], pair[1]);
+        }
+
+        try {
+          safeShowToast("Uploading cover image...", "info");
+          console.log(
+            "Uploading cover image to:",
+            `${window.apiConfig.baseUrl}/admin/upload-image`
+          );
+
+          const response = await fetch(
+            `${window.apiConfig.baseUrl}/admin/upload-image`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem(window.apiConfig.authTokenName)}`,
+              },
+              body: formData,
+            }
+          );
+
+          const responseText = await response.text();
+          console.log("Cover image upload response:", responseText);
+
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch (e) {
+            console.error("Failed to parse response as JSON:", e);
+            throw new Error("Invalid response format from server");
+          }
+
+          if (response.ok && data.imageUrl) {
+            console.log("Cover image uploaded successfully:", data.imageUrl);
+            // Extract the image ID from the URL
+            const imageId = extractImageId(data.imageUrl);
+            console.log("Extracted image ID:", imageId);
+
+            if (coverImagePreview && imageId) {
+              const img = coverImagePreview.querySelector("img");
+              if (img) {
+                // Store full URL for display in admin panel
+                img.src = window.apiConfig.baseUrl + data.imageUrl;
+                // Set a data attribute to store the ID
+                img.dataset.imageId = imageId;
+
+                // Add ID display next to image
+                const idDisplay = document.createElement("div");
+                idDisplay.className = "image-id-display mt-2";
+                idDisplay.innerHTML = `<span class="badge bg-info">Image ID: ${imageId}</span>`;
+
+                // Remove any existing ID display
+                const existingIdDisplay =
+                  coverImagePreview.querySelector(".image-id-display");
+                if (existingIdDisplay) {
+                  existingIdDisplay.remove();
+                }
+
+                // Add the new ID display before the remove button
+                const removeBtn =
+                  coverImagePreview.querySelector("#removeCoverBtn");
+                if (removeBtn) {
+                  coverImagePreview.insertBefore(idDisplay, removeBtn);
+                } else {
+                  coverImagePreview.appendChild(idDisplay);
+                }
+
+                img.onerror = function () {
+                  console.error("Failed to load cover image:", data.imageUrl);
+                };
+              }
+            }
+          } else {
+            throw new Error(
+              `Failed to upload cover image: ${data.message || response.statusText}`
+            );
+          }
+        } catch (error) {
+          console.error("Error uploading cover image:", error);
+          safeShowToast(
+            `Failed to upload cover image: ${error instanceof Error ? error.message : "Unknown error"}`,
+            "error"
+          );
+        }
+      } else {
+        safeShowToast("Please select an image to upload", "error");
+      }
+    });
+
+    // Handle multiple image uploads
+    uploadImagesBtn?.addEventListener("click", async () => {
+      if (imageUpload.files && imageUpload.files.length > 0) {
+        const formData = new FormData();
+
+        console.log(`Preparing to upload ${imageUpload.files.length} images`);
+
+        Array.from(imageUpload.files).forEach((file, index) => {
+          formData.append(`image`, file);
+          console.log(`Added file ${index} to FormData:`, {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          });
+        });
+
+        // Debug: Verify FormData content
+        console.log("FormData entries:");
+        for (const pair of formData.entries()) {
+          console.log(pair[0], typeof pair[1]);
+        }
+
+        try {
+          safeShowToast("Uploading images...", "info");
+          console.log(
+            "Uploading multiple images to:",
+            `${window.apiConfig.baseUrl}/admin/upload-image`
+          );
+
+          const response = await fetch(
+            `${window.apiConfig.baseUrl}/admin/upload-image`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem(window.apiConfig.authTokenName)}`,
+              },
+              body: formData,
+            }
+          );
+
+          const responseText = await response.text();
+          console.log("Multiple image upload response:", responseText);
+
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch (e) {
+            console.error("Failed to parse response as JSON:", e);
+            throw new Error("Invalid response format from server");
+          }
+
+          if (response.ok && data.imageUrl) {
+            console.log("Image uploaded successfully:", data.imageUrl);
+            const fullUrl = window.apiConfig.baseUrl + data.imageUrl;
+            addImageToGallery(fullUrl);
+
+            // Extract the image ID
+            const imageId = extractImageId(data.imageUrl);
+            if (imageId) {
+              // Create and show the markdown reference
+              showMarkdownReference(imageId, fullUrl);
+            }
+
+            safeShowToast("Image uploaded successfully", "success");
+
+            // If multiple images were uploaded, add them all
+            if (data.imageUrls && data.imageUrls.length > 1) {
+              console.log(
+                `Adding ${data.imageUrls.length - 1} additional images to gallery`
+              );
+              // Skip the first one since we already added it
+              for (let i = 1; i < data.imageUrls.length; i++) {
+                const url = window.apiConfig.baseUrl + data.imageUrls[i];
+                addImageToGallery(url);
+
+                // Also show markdown reference for these
+                const additionalImageId = extractImageId(data.imageUrls[i]);
+                if (additionalImageId) {
+                  showMarkdownReference(additionalImageId, url);
+                }
+              }
+            }
+
+            // Clear the file input
+            if (imageUpload) {
+              imageUpload.value = "";
+            }
+          } else {
+            throw new Error(
+              `Failed to upload images: ${data.message || response.statusText}`
+            );
+          }
+        } catch (error) {
+          console.error("Error uploading images:", error);
+          safeShowToast(
+            `Failed to upload images: ${error instanceof Error ? error.message : "Unknown error"}`,
+            "error"
+          );
+        }
+      } else {
+        safeShowToast("Please select images to upload", "error");
+      }
+    });
+
+    // Add an image to the gallery UI
+    function addImageToGallery(url: string) {
+      try {
+        if (!imageGallery) {
+          console.error("Image gallery element not found");
+          return;
+        }
+
+        const imageId = extractImageId(url);
+        if (!imageId) {
+          console.error("Failed to extract image ID from URL:", url);
+          return;
+        }
+
+        // For markdown, use server-relative path to avoid 404 errors
+        const markdownString = `![Image](/uploads/${imageId})`;
+
+        // HTML variants for floating images
+        const htmlLeftFloat = `<img src="/uploads/${imageId}" alt="Image" style="float:left; width:250px; margin:0 1rem 1rem 0;" />`;
+        const htmlRightFloat = `<img src="/uploads/${imageId}" alt="Image" style="float:right; width:250px; margin:0 0 1rem 1rem;" />`;
+        const htmlCentered = `<img src="/uploads/${imageId}" alt="Image" style="display:block; max-width:100%; margin:1rem auto;" />`;
+
+        // Create the gallery item using server-relative path
+        const imageItem = document.createElement("div");
+        imageItem.className = "image-item";
+        imageItem.dataset.imageId = imageId;
+
+        // Add a loading indicator
+        imageItem.innerHTML = `
+          <div class="image-container">
+            <div class="image-loading">
+              <i class="fas fa-spinner fa-spin"></i>
+            </div>
+            <img src="${window.apiConfig.baseUrl}/uploads/${imageId}" alt="Uploaded image">
+          </div>
+          <div class="image-controls">
+            <button class="image-insert" title="Insert markdown image">MD</button>
+            <button class="html-left" title="Insert left-floating HTML image">←</button>
+            <button class="html-center" title="Insert centered HTML image">↕</button>
+            <button class="html-right" title="Insert right-floating HTML image">→</button>
+            <button class="image-copy-id" title="Copy ID">ID</button>
+            <button class="image-delete" title="Delete image">🗑️</button>
+          </div>
+        `;
+
+        // Add event listeners for the buttons
+        const insertBtn = imageItem.querySelector(".image-insert");
+        if (insertBtn) {
+          insertBtn.addEventListener("click", () => {
+            insertImageToEditor(markdownString);
+          });
+        }
+
+        // Add HTML left float button
+        const htmlLeftBtn = imageItem.querySelector(".html-left");
+        if (htmlLeftBtn) {
+          htmlLeftBtn.addEventListener("click", () => {
+            insertImageToEditor(htmlLeftFloat);
+            showToast("Left-floating image inserted");
+          });
+        }
+
+        // Add HTML center button
+        const htmlCenterBtn = imageItem.querySelector(".html-center");
+        if (htmlCenterBtn) {
+          htmlCenterBtn.addEventListener("click", () => {
+            insertImageToEditor(htmlCentered);
+            showToast("Centered image inserted");
+          });
+        }
+
+        // Add HTML right float button
+        const htmlRightBtn = imageItem.querySelector(".html-right");
+        if (htmlRightBtn) {
+          htmlRightBtn.addEventListener("click", () => {
+            insertImageToEditor(htmlRightFloat);
+            showToast("Right-floating image inserted");
+          });
+        }
+
+        // Copy simple ID
+        const copyIdBtn = imageItem.querySelector(".image-copy-id");
+        if (copyIdBtn) {
+          copyIdBtn.addEventListener("click", () => {
+            navigator.clipboard.writeText(imageId);
+            showToast("Image ID copied to clipboard");
+          });
+        }
+
+        // Handle image loading
+        const img = imageItem.querySelector("img");
+        if (img) {
+          img.onload = function () {
+            // Remove loading indicator when image is loaded
+            const loadingIndicator = imageItem.querySelector(".image-loading");
+            if (loadingIndicator) loadingIndicator.remove();
+          };
+
+          img.onerror = function () {
+            // If image fails to load, show a placeholder
+            this.src = `/admin-dashboard/placeholder-${Math.floor(Math.random() * 3) + 1}.jpg`;
+
+            // Remove loading indicator
+            const loadingIndicator = imageItem.querySelector(".image-loading");
+            if (loadingIndicator) loadingIndicator.remove();
+          };
+        }
+
+        // Add to gallery
+        imageGallery.appendChild(imageItem);
+        console.log("Added image to gallery:", url, "with ID:", imageId);
+      } catch (error) {
+        console.error("Error adding image to gallery:", error);
+      }
+    }
+
+    // Remove cover image
+    function clearForm() {
+      if (postForm) {
+        postForm.reset();
+        if (coverImagePreview) {
+          const img = coverImagePreview.querySelector("img");
+          if (img) {
+            img.src = "";
+            // Clear the image ID as well
+            img.dataset.imageId = "";
+          }
+          // Remove the ID display if it exists
+          const idDisplay =
+            coverImagePreview.querySelector(".image-id-display");
+          if (idDisplay) {
+            idDisplay.remove();
+          }
+          coverImagePreview.classList.add("d-none");
+        }
+        if (imageGallery) {
+          imageGallery.innerHTML = "";
+        }
+      }
+    }
+
+    // Function to display a markdown reference card after upload
+    function showMarkdownReference(imageId: string, url: string) {
+      // Create the markdown and HTML strings - use server-relative paths not absolute paths
+      const markdownString = `![Image](/uploads/${imageId})`;
+      const htmlLeftFloat = `<img src="/uploads/${imageId}" alt="Image" style="float:left; width:250px; margin:0 1rem 1rem 0;" />`;
+      const htmlRightFloat = `<img src="/uploads/${imageId}" alt="Image" style="float:right; width:250px; margin:0 0 1rem 1rem;" />`;
+      const htmlCentered = `<img src="/uploads/${imageId}" alt="Image" style="display:block; max-width:100%; margin:1rem auto;" />`;
+
+      console.log("Showing reference for:", {
+        imageId,
+        url,
+        markdownString,
+      });
+
+      // Create a reference card that appears temporarily
+      const referenceCard = document.createElement("div");
+      referenceCard.className = "markdown-reference-card";
+      referenceCard.innerHTML = `
+        <div class="card-header">
+          <h6 class="m-0">Image Uploaded - Ready to Use</h6>
+          <button type="button" class="btn-close" aria-label="Close">×</button>
+        </div>
+        <div class="card-body">
+          <div class="mb-2">
+            <img src="${window.apiConfig.baseUrl}/uploads/${imageId}" alt="Uploaded image" class="ref-img" />
+          </div>
+          <div class="input-group mb-2">
+            <span class="input-group-text">Markdown</span>
+            <input type="text" class="form-control" value="${markdownString}" readonly />
+            <button class="btn btn-secondary copy-markdown" type="button">
+              <i class="fas fa-copy"></i>
+            </button>
+          </div>
+          <div class="mb-2">
+            <label>Image ID:</label>
+            <code>${imageId}</code>
+          </div>
+          <div class="d-flex gap-2 my-3">
+            <button type="button" class="btn btn-sm btn-info insert-markdown">
+              Insert Markdown
+            </button>
+            <button type="button" class="btn btn-sm btn-primary insert-html-left">
+              Float Left
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary insert-html-center">
+              Center
+            </button>
+            <button type="button" class="btn btn-sm btn-danger insert-html-right">
+              Float Right
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Add to the page
+      document.body.appendChild(referenceCard);
+
+      // Set a timeout to add the active class (for animation)
+      setTimeout(() => {
+        referenceCard.classList.add("active");
+      }, 10);
+
+      // Add event listener for close button
+      const closeBtn = referenceCard.querySelector(".btn-close");
+      closeBtn?.addEventListener("click", () => {
+        referenceCard.classList.remove("active");
+        setTimeout(() => {
+          if (referenceCard.parentNode) {
+            referenceCard.parentNode.removeChild(referenceCard);
+          }
+        }, 300);
+      });
+
+      // Add event listener for copy button
+      const copyBtn = referenceCard.querySelector(".copy-markdown");
+      copyBtn?.addEventListener("click", () => {
+        const input = referenceCard.querySelector("input");
+        if (input) {
+          input.select();
+          navigator.clipboard.writeText(input.value);
+          safeShowToast("Markdown copied to clipboard", "success");
         }
       });
+
+      // Add event listeners for insert buttons
+      const insertMdBtn = referenceCard.querySelector(".insert-markdown");
+      insertMdBtn?.addEventListener("click", () => {
+        insertImageToEditor(markdownString);
+        safeShowToast("Markdown image inserted", "success");
+        closeReferenceCard();
+      });
+
+      const insertLeftBtn = referenceCard.querySelector(".insert-html-left");
+      insertLeftBtn?.addEventListener("click", () => {
+        insertImageToEditor(htmlLeftFloat);
+        safeShowToast("Left-floating image inserted", "success");
+        closeReferenceCard();
+      });
+
+      const insertCenterBtn = referenceCard.querySelector(
+        ".insert-html-center"
+      );
+      insertCenterBtn?.addEventListener("click", () => {
+        insertImageToEditor(htmlCentered);
+        safeShowToast("Centered image inserted", "success");
+        closeReferenceCard();
+      });
+
+      const insertRightBtn = referenceCard.querySelector(".insert-html-right");
+      insertRightBtn?.addEventListener("click", () => {
+        insertImageToEditor(htmlRightFloat);
+        safeShowToast("Right-floating image inserted", "success");
+        closeReferenceCard();
+      });
+
+      function closeReferenceCard() {
+        referenceCard.classList.remove("active");
+        setTimeout(() => {
+          if (referenceCard.parentNode) {
+            referenceCard.parentNode.removeChild(referenceCard);
+          }
+        }, 300);
+      }
+
+      // Auto-close after 30 seconds
+      setTimeout(() => {
+        if (document.body.contains(referenceCard)) {
+          closeReferenceCard();
+        }
+      }, 30000);
     }
 
-    // Initial load of posts
-    loadPosts();
+    // Helper function for showing toast messages
+    function showToast(
+      message: string,
+      type: "success" | "error" | "info" = "success"
+    ) {
+      // Try to use existing toast function if available
+      if (typeof safeShowToast === "function") {
+        safeShowToast(message, type);
+      } else {
+        // Fallback simple toast
+        console.log(`Toast (${type}): ${message}`);
+        alert(message);
+      }
+    }
+
+    // Function to insert content at cursor position in the editor
+    function insertImageToEditor(markdownString: string) {
+      if (contentInput) {
+        const cursorPos = contentInput.selectionStart;
+        const textBefore = contentInput.value.substring(0, cursorPos);
+        const textAfter = contentInput.value.substring(cursorPos);
+
+        // Insert markdown at cursor position
+        contentInput.value = textBefore + markdownString + textAfter;
+        contentInput.focus();
+        contentInput.selectionStart = cursorPos + markdownString.length;
+        contentInput.selectionEnd = cursorPos + markdownString.length;
+
+        // Update preview if we're on preview tab
+        if (document.querySelector("#preview-tab.active")) {
+          updatePreview();
+        }
+      }
+    }
   });
 </script>

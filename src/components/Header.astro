@@ -16,7 +16,7 @@ const username = userData?.name || "Admin";
       <i class="fas fa-user"></i>
     </div>
     <div class="user-info">
-      <span id="currentUser">{username}</span>
+      <span id="currentUser" class="username">{username}</span>
       <a
         href="/login"
         id="logoutBtn"
@@ -27,3 +27,38 @@ const username = userData?.name || "Admin";
     </div>
   </div>
 </header>
+
+<style>
+  .header-branding {
+    position: relative;
+  }
+
+  .header-left h1 {
+    font-size: 2.2rem;
+    margin: 0;
+  }
+
+  .user-profile {
+    display: flex;
+    align-items: center;
+  }
+
+  .username {
+    font-weight: 500;
+    color: var(--light);
+    font-size: 1.05rem;
+  }
+
+  @media (max-width: 768px) {
+    .header-branding {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .user-profile {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+</style>

@@ -1,267 +1,156 @@
-# IMPULS Trip Admin Dashboard
+# ImpulsTrip Admin Dashboard
 
-This is the admin dashboard for managing the IMPULS Trip website content and users.
+The Admin Dashboard is a comprehensive management interface for the ImpulsTrip website, built with Astro and Node.js. It provides administrators with tools to manage content, users, and other aspects of the ImpulsTrip platform.
 
-## Setup
+## Project Overview
 
-1. Clone this repository:
-```bash
-git clone https://github.com/TejeshwarThakur2003/ImpulsTripWS-Admin.git
-cd admin-dashboard
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Create a `.env` file in the root directory with the following content:
-```
-PUBLIC_API_URL=http://localhost:8001
-PORT=8082
-NODE_ENV=development
-```
-
-Adjust the `PUBLIC_API_URL` to point to your backend server.
-
-## Development
-
-Start the development server:
-```bash
-npm run dev
-```
-
-This will start the Astro development server on port 8082 (or the port specified in your .env file).
-
-## Building for Production
-
-```bash
-npm run build
-```
-
-## Connection with Other Projects
-
-### Backend Integration
-
-The admin dashboard connects to the IMPULS Trip backend for API requests. To connect properly:
-
-1. Ensure the backend server is running on the URL specified in your `.env` file.
-2. Make sure the backend server has CORS configured to allow requests from your admin dashboard domain.
-3. API requests should be made to `${import.meta.env.PUBLIC_API_URL}/...`
-
-### Authentication
-
-The admin dashboard uses JWT authentication with the backend:
-
-1. Authenticate using the `/admin/auth/login` endpoint on the backend.
-2. Store the JWT token securely in the browser.
-3. Include the token in the Authorization header for authenticated requests.
-
-## Creating a New Git Repository
-
-To create a separate git repository for this project:
-
-1. Initialize a new git repository:
-```bash
-git init
-```
-
-2. Add all files:
-```bash
-git add .
-```
-
-3. Commit the files:
-```bash
-git commit -m "Initial commit for IMPULS Trip admin dashboard"
-```
-
-4. Add your remote repository:
-```bash
-git remote add origin https://github.com/TejeshwarThakur2003/ImpulsTripWS-Admin.git
-```
-
-5. Push to your remote repository:
-```bash
-git push -u origin main
-```
-
-## Project Structure
-
-```
-/
-├── public/
-│   └── img/        # Static images
-├── src/
-│   ├── components/ # Reusable UI components
-│   │   ├── Header.astro
-│   │   ├── Footer.astro
-│   │   └── Navigation.astro
-│   ├── layouts/    # Page layouts
-│   │   └── AdminLayout.astro
-│   ├── pages/      # Routes
-│   │   ├── index.astro
-│   │   ├── login.astro
-│   │   ├── dashboard.astro
-│   │   ├── blog-editor.astro
-│   │   ├── waitlist-manager.astro
-│   │   ├── user-management.astro
-│   │   └── site-settings.astro
-│   └── styles/     # Global styles
-│       └── global.css
-└── package.json
-```
+- **Technology Stack**: Astro, Node.js, Express
+- **Status**: Production-ready
+- **Version**: 0.1.0
 
 ## Features
 
-- Content management for blog posts
-- Image upload and management
-- Waitlist/newsletter subscriber management
+- Secure authentication system
+- Content management interface
+- User management tools
 - Analytics dashboard
-- User management
-- Site settings
+- Configuration management
+- Responsive design for desktop and mobile administration
 
-## Deployment
+## Prerequisites
 
-Deploy the contents of the `dist/` directory to your preferred hosting service.
+- Node.js 18 or later
+- npm 9 or later
+- Access to the ImpulsTrip API backend
 
-## Development Guidelines
+## Local Development
 
-### Adding New Pages
-
-1. Create a new `.astro` file in the `src/pages/` directory
-2. Use the `AdminLayout` component:
-
-```astro
----
-import AdminLayout from '../layouts/AdminLayout.astro';
----
-
-<AdminLayout title="Page Title" currentPage="page-id">
-  <!-- Page content goes here -->
-</AdminLayout>
-```
-
-### Adding New Components
-
-1. Create a new `.astro` file in the `src/components/` directory
-2. Export props if needed:
-
-```astro
----
-interface Props {
-  myProp: string;
-}
-
-const { myProp } = Astro.props;
----
-
-<div>
-  <p>{myProp}</p>
-</div>
-```
-
-### Styling
-
-- Global styles are in `src/styles/global.css`
-- Component-specific styles can be added within the component files
-
-# Blog Management System
-
-This is an admin interface for managing blog posts on the ImpulsTrip website. It allows you to create, edit, and delete blog posts with rich content and images.
-
-## Features
-
-- Admin-only access (login required)
-- Create new blog posts with:
-  - Title, tagline, and author information
-  - Cover image
-  - Rich content with Markdown support
-  - Inline images with automatic uploading
-- Edit existing blog posts
-- Delete blog posts
-- Live content preview
-- Responsive design
-
-## Getting Started
-
-### Prerequisites
-
-- Backend server running on port 8000
-- Admin credentials (username and password)
-
-### Running the Admin Dashboard
-
-1. Start the backend server:
-
-   ```
-   cd backend
-   python main.py
+1. **Install dependencies**:
+   ```bash
+   npm install
    ```
 
-2. Start the admin dashboard:
-
+2. **Set up environment variables**:
+   ```bash
+   cp .env.example .env
    ```
-   cd admin-dashboard
-   python run_dashboard.py
+   
+   Edit the `.env` file with appropriate values for:
+   - `PORT`: The port where the admin dashboard will run (default: 8082)
+   - `NODE_ENV`: Set to `development`
+   - `PUBLIC_API_URL`: Your API endpoint
+   - `PUBLIC_FASTAPI_URL`: Your FastAPI endpoint (if applicable)
+
+3. **Start the development server**:
+   ```bash
+   npm run dev
    ```
 
-3. The dashboard should automatically open in your browser at http://localhost:8080/blog_editor.html
+4. **Access the dashboard**:
+   Open your browser and navigate to `http://localhost:8082`
 
-4. Log in with your admin credentials
+## Production Deployment
 
-## Using the Blog Manager
+### Option 1: Docker Deployment (Recommended)
 
-### Creating a New Blog Post
+The easiest and recommended way to deploy the admin dashboard is using Docker:
 
-1. Click on the "New Post" tab
-2. Fill in all required fields:
-   - Title: The main title of your blog post
-   - Tagline: A brief summary or subtitle
-   - Author: The name of the person who wrote the post
-   - Content: The main body of your blog post (supports Markdown)
-3. Optionally, upload a cover image
-4. Optionally, upload inline images to be used in your content
-5. Use the preview pane to see how your content will look
-6. Click "Create Post" to publish your blog post
+1. **Prerequisites**:
+   - Docker and Docker Compose installed on your server
+   - A domain or subdomain pointing to your server
 
-### Editing a Blog Post
+2. **Deployment Steps**:
+   ```bash
+   # Clone the repository
+   git clone <repository-url>
+   cd impulstripwebsite/admin-dashboard
+   
+   # Configure environment
+   cp .env.example .env
+   # Edit .env with production values
+   
+   # Build and start the container
+   docker-compose up -d --build
+   ```
 
-1. On the "All Posts" tab, find the post you want to edit and click "Edit"
-2. Update the fields as needed
-3. You can choose to replace the cover image by uploading a new one
-4. You can add more inline images or replace all existing ones
-5. Use the preview pane to see your changes
-6. Click "Update Post" to save your changes
+3. **Configure Nginx** (recommended):
+   Set up Nginx as a reverse proxy with HTTPS for secure access.
 
-### Deleting a Blog Post
+### Option 2: Manual Deployment
 
-1. On the "All Posts" tab, find the post you want to delete and click "Edit"
-2. On the edit page, click the "Delete Post" button
-3. Confirm the deletion when prompted
+1. **Build the application**:
+   ```bash
+   npm run build
+   ```
 
-## Content Guidelines
+2. **Start the production server**:
+   ```bash
+   NODE_ENV=production npm start
+   ```
 
-### Markdown Support
+3. **Process Management**:
+   For production, use a process manager like PM2:
+   ```bash
+   npm install -g pm2
+   pm2 start server.js --name admin-dashboard
+   ```
 
-The content editor supports Markdown formatting:
+### Option 3: Cloud Platform Deployment
 
-- `# Heading 1`, `## Heading 2`, etc. for headings
-- `*italic*` or `_italic_` for italic text
-- `**bold**` or `__bold__` for bold text
-- `- Item` for bullet lists
-- `1. Item` for numbered lists
-- `[Link text](https://example.com)` for links
-- `![Alt text](imageN)` to insert uploaded images, where N is the image number
+This application can be deployed to various cloud platforms:
 
-### Using Inline Images
+- **Vercel/Netlify**: Requires minor adjustments for serverless functions
+- **AWS/GCP/Azure**: Can be deployed as a container service or on VM instances
+- **Digital Ocean App Platform**: Supports direct deployment from GitHub
 
-1. Upload your images using the "Inline Images" field
-2. Reference them in your content using the format `![Alt text](image1)`, `![Alt text](image2)`, etc.
-3. The images will be replaced with the actual uploaded images when displayed
+## Security Considerations
+
+- Always deploy behind HTTPS
+- Use strong authentication mechanisms
+- Consider IP restrictions for admin access
+- Regularly update dependencies 
+- Set proper Content Security Policy headers
+
+## Configuration Options
+
+All configuration is done through environment variables in the `.env` file:
+
+| Variable                | Description                               | Default Value               |
+|------------------------|-------------------------------------------|----------------------------|
+| PORT                   | The port to run the server on             | 8082                       |
+| NODE_ENV               | Environment (development/production)      | development                |
+| PUBLIC_WEBSITE_URL     | The base URL of the admin dashboard       | http://localhost:8082      |
+| PUBLIC_API_URL         | The URL of the Node.js API                | http://localhost:8001      |
+| PUBLIC_FASTAPI_URL     | The URL of the FastAPI API                | http://localhost:8000      |
+| PUBLIC_API_TIMEOUT     | API request timeout in milliseconds       | 30000                      |
+| PUBLIC_AUTH_TOKEN_NAME | Name of the auth token in localStorage    | adminToken                 |
+| PUBLIC_COOKIE_SECURE   | Whether cookies should be secure          | false (true in production) |
+| PUBLIC_COOKIE_SAME_SITE| SameSite attribute for cookies           | lax (strict in production) |
+
+## Maintenance
+
+- Regular backups of configuration
+- Monitoring of server resources
+- Scheduled dependency updates
+- Security audits
 
 ## Troubleshooting
 
-- If you can't log in, make sure the backend server is running
-- If images don't appear, check that they were uploaded successfully
-- If the preview doesn't update, try refreshing the page
+See the [RUNNING.md](./RUNNING.md) file for detailed troubleshooting information.
+
+## Deployment Guide
+
+For a more detailed deployment guide, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+## Development Workflow
+
+When developing new features:
+
+1. Create a feature branch from main
+2. Implement and test your changes
+3. Run linting and formatting checks: `npm run lint && npm run format`
+4. Submit a pull request for review
+
+## License
+
+Proprietary - All rights reserved

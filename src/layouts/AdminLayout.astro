@@ -41,6 +41,16 @@ const { title, currentPage } = Astro.props;
     />
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/img/favicon.png" />
+
+    <!-- Quill Rich Text Editor (add only when page needs it) -->
+    {
+      currentPage === "blog-editor" && (
+        <>
+          <link href="/quill.snow.css" rel="stylesheet" />
+          <script src="/quill.min.js" is:inline />
+        </>
+      )
+    }
   </head>
   <body>
     <div class="container">
@@ -62,11 +72,6 @@ const { title, currentPage } = Astro.props;
       import { isAuthenticated, clearToken, getUserData } from "../utils/auth";
 
       document.addEventListener("DOMContentLoaded", function () {
-        // Check if user is logged in
-        if (!isAuthenticated() && window.location.pathname !== "/login") {
-          window.location.href = "/login";
-        }
-
         // Set current user display
         const userData = getUserData();
         if (userData && userData.name) {

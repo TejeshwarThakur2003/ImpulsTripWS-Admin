@@ -37,6 +37,6 @@ declare global {
 if (typeof window !== 'undefined') {
   window.process = window.process || {};
   window.process.env = window.process.env || {};
-  window.process.env.PUBLIC_API_URL = window.process.env.PUBLIC_API_URL || 'http://localhost:8001';
+  window.process.env.PUBLIC_API_URL = window.process.env.PUBLIC_API_URL || 'http://localhost:8000';
   window.process.env.PUBLIC_API_TIMEOUT = window.process.env.PUBLIC_API_TIMEOUT || '30000';
 } 

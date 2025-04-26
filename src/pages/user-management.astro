@@ -985,9 +985,17 @@ try {
         permissions,
       };
 
-      // Only include password if provided (for editing)
+      // Handle password for user creation or update
       if (password) {
+        // For normal users, just send the password as is - the backend will handle hashing
         userData.password = password;
+
+        // If creating/updating an admin user, add a special note in case we need to fix it later
+        if (role === "admin") {
+          console.log(
+            "Note: Creating/updating admin user. May need password format adjustment."
+          );
+        }
       }
 
       // Save user

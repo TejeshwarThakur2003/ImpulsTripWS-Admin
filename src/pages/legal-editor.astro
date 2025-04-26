@@ -1,0 +1,1961 @@
+---
+import AdminLayout from "../layouts/AdminLayout.astro";
+import { API_CONFIG } from "../utils/config";
+
+// Set the page to be server-rendered, not statically generated
+export const prerender = false;
+
+// Get the API base URL
+const apiBaseUrl = API_CONFIG.fastApiUrl;
+console.log("Legal editor page: API base URL", apiBaseUrl);
+
+// Global EasyMDE type
+declare global {
+  interface Window {
+    EasyMDE: any;
+    legalApi: any; // Rename to match other API patterns
+    editorInitAttempts: number;
+  }
+}
+
+// API response interface
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+// Legal document interface
+interface LegalDocument {
+  id: string;
+  type: "privacy_policy" | "terms_conditions";
+  title: string;
+  content: string;
+  updated_at: string;
+}
+
+// Get user token from cookies
+const cookies = Astro.cookies;
+const token =
+  cookies.get("token")?.value || cookies.get("adminToken")?.value || "";
+console.log("Legal editor page: Token exists?", !!token);
+console.log("Legal editor page: Cookie token length", token ? token.length : 0);
+
+// Debug all cookies for troubleshooting
+const allCookieNames = ["token", "adminToken"]; // Add other cookie names to check
+const cookieValues = allCookieNames.reduce(
+  (acc, name) => {
+    acc[name] = cookies.get(name)?.value || null;
+    return acc;
+  },
+  {} as Record<string, string | null>
+);
+console.log("Legal editor page: Cookies", cookieValues);
+
+let privacyPolicy: LegalDocument | null = null;
+let termsConditions: LegalDocument | null = null;
+let error = "";
+
+// Only attempt to fetch data if token exists
+if (token) {
+  try {
+    console.log("Legal editor page: Will attempt to fetch data with token");
+    // We won't fetch data on the server side, but will do it client-side
+    // This avoids SSR/hydration issues
+  } catch (err) {
+    console.error("Error during server-side preparation:", err);
+    error =
+      err instanceof Error
+        ? err.message
+        : "Failed to prepare for data fetching";
+  }
+} else {
+  // Redirect to login if no token
+  console.log("Legal editor page: No token, redirecting to login");
+  return Astro.redirect("/login");
+}
+
+// Format date function
+function formatDate(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch (e) {
+    console.error("[Legal Editor] Error formatting date:", e);
+    return dateString;
+  }
+}
+---
+
+<AdminLayout title="Legal Document Editor" currentPage="legal-editor">
+  <div class="container mx-auto px-4 py-16 mt-8">
+    <h1 class="text-3xl font-bold mb-6">Legal Document Editor</h1>
+
+    <!-- <div id="status-message" class="hidden"></div>-->
+
+    <div class="feature-card p-4">
+      <!-- Debug Info Section 
+      <div class="mb-6 p-4 bg-dark border border-gray-700 rounded">
+        <h3 class="text-xl font-bold mb-3">API Connection Status</h3>
+        <div id="apiStatus" class="text-yellow-500">
+          Testing API connection...
+        </div>
+        <div class="mt-4">
+          <button id="testAuth" class="btn btn-sm btn-secondary mr-2">
+            Test Auth
+          </button>
+          <button id="debugApi" class="btn btn-sm btn-secondary">
+            Debug API
+          </button>
+        </div>
+      </div>-->
+
+      <!-- Tab Navigation -->
+      <div class="border-b border-gray-200 mb-6">
+        <ul class="nav nav-tabs" id="tabLinks">
+          <li class="nav-item">
+            <button
+              type="button"
+              id="privacyTab"
+              class="nav-link active"
+              onclick="switchTab('privacy')">Privacy Policy</button
+            >
+          </li>
+          <li class="nav-item">
+            <button
+              type="button"
+              id="termsTab"
+              class="nav-link"
+              onclick="switchTab('terms')">Terms & Conditions</button
+            >
+          </li>
+        </ul>
+      </div>
+
+      <!-- Tab Content -->
+      <div id="tabContent" class="p-2">
+        <!-- Privacy Policy Tab - active by default -->
+        <div id="privacy" class="active" style="display: block;">
+          <form id="privacyForm">
+            <div class="mb-4">
+              <label
+                for="privacyTitle"
+                class="block text-light font-medium mb-2">Title</label
+              >
+              <input
+                type="text"
+                id="privacyTitle"
+                value="Privacy Policy"
+                class="form-control bg-dark text-light border-secondary"
+              />
+            </div>
+            <div class="mb-4">
+              <label
+                for="privacyEditor"
+                class="block text-light font-medium mb-2">Content</label
+              >
+              <textarea id="privacyEditor" class="w-100"></textarea>
+            </div>
+            <div class="mb-4 text-gray-light" id="privacyLastUpdated">
+              Last updated: Never
+            </div>
+            <button type="submit" id="savePrivacy" class="btn btn-primary">
+              <i class="fas fa-save me-2"></i> Save Privacy Policy
+            </button>
+            <button
+              type="button"
+              id="debugPrivacy"
+              class="btn btn-secondary ms-2"
+            >
+              <i class="fas fa-bug me-2"></i> Debug Auth
+            </button>
+            <div id="privacyEditorError" class="mt-3 text-danger hidden">
+              Error initializing editor. Please refresh the page or try again
+              later.
+            </div>
+          </form>
+        </div>
+
+        <!-- Terms & Conditions Tab -->
+        <div id="terms" style="display: none;">
+          <form id="termsForm">
+            <div class="mb-4">
+              <label for="termsTitle" class="block text-light font-medium mb-2"
+                >Title</label
+              >
+              <input
+                type="text"
+                id="termsTitle"
+                value="Terms & Conditions"
+                class="form-control bg-dark text-light border-secondary"
+              />
+            </div>
+            <div class="mb-4">
+              <label for="termsEditor" class="block text-light font-medium mb-2"
+                >Content</label
+              >
+              <textarea id="termsEditor" class="w-100"></textarea>
+            </div>
+            <div class="mb-4 text-gray-light" id="termsLastUpdated">
+              Last updated: Never
+            </div>
+            <button type="submit" id="saveTerms" class="btn btn-primary">
+              <i class="fas fa-save me-2"></i> Save Terms & Conditions
+            </button>
+            <button
+              type="button"
+              id="debugTerms"
+              class="btn btn-secondary ms-2"
+            >
+              <i class="fas fa-bug me-2"></i> Debug Auth
+            </button>
+            <div id="termsEditorError" class="mt-3 text-danger hidden">
+              Error initializing editor. Please refresh the page or try again
+              later.
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<!-- Include locally-hosted SimpleMDE -->
+<link rel="stylesheet" href="/js/easymde/easymde.min.css" />
+<script src="/js/easymde/easymde.min.js" is:inline></script>
+
+<!-- API utilities in line with other pages -->
+<script define:vars={{ apiBaseUrl, formatDate }}>
+  // Initialize API utilities
+  window.legalApi = {
+    async apiRequest(endpoint, options = {}) {
+      try {
+        const { method = "GET", body = null } = options;
+
+        // Get token from localStorage
+        const tokenName = "adminToken";
+        const token = localStorage.getItem(tokenName);
+
+        if (!token) {
+          console.error("[Legal Editor] No authentication token found");
+          // Don't redirect automatically, return error instead
+          return { success: false, error: "Authentication required" };
+        }
+
+        // Check token format and expiry
+        try {
+          const parts = token.split(".");
+          if (parts.length !== 3) {
+            console.error("[Legal Editor] Token is not in valid JWT format");
+            return { success: false, error: "Invalid token format" };
+          }
+
+          // Try to decode payload to check expiration
+          const payload = JSON.parse(
+            atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
+          );
+          if (payload.exp) {
+            const now = Math.floor(Date.now() / 1000);
+            if (payload.exp < now) {
+              console.error("[Legal Editor] Token has expired");
+              return {
+                success: false,
+                error: "Token has expired",
+                auth_failed: true,
+                expired: true,
+              };
+            }
+          }
+
+          // Ensure token is also saved as a cookie
+          document.cookie = `adminToken=${token}; path=/; max-age=86400; SameSite=Lax`;
+        } catch (error) {
+          console.error("[Legal Editor] Error checking token:", error);
+        }
+
+        // Setup fetch options
+        const url = `${apiBaseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+        console.log(`[Legal Editor] Request: ${method} ${url}`);
+        console.log(`[Legal Editor] Request body:`, body);
+
+        const headers = {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+
+        const fetchOptions = {
+          method,
+          headers,
+          mode: "cors",
+        };
+
+        // Add body for non-GET requests
+        if (method !== "GET" && body) {
+          fetchOptions.body = JSON.stringify(body);
+        }
+
+        // Make the request
+        const response = await fetch(url, fetchOptions);
+        console.log(`[Legal Editor] Response status: ${response.status}`);
+
+        // Handle authentication errors
+        if (response.status === 401 || response.status === 403) {
+          console.error(
+            `[Legal Editor] Authentication failed: ${response.status}`
+          );
+          // Don't remove token or redirect, just return the error
+          return {
+            success: false,
+            authenticated: false,
+            status: response.status,
+            error: "Authentication failed",
+            auth_failed: true,
+          };
+        }
+
+        // Parse response based on content type
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await response.json();
+
+          // Create a standardized response
+          const result = {
+            success: response.ok,
+            status: response.status,
+            data: data,
+            error: response.ok
+              ? null
+              : data.error || data.detail || "Unknown error",
+          };
+
+          // If this appears to be an auth-related endpoint, add the authenticated flag
+          if (endpoint.includes("auth") || endpoint.includes("login")) {
+            result.authenticated = response.ok;
+          }
+
+          return result;
+        } else {
+          const text = await response.text();
+          return {
+            success: response.ok,
+            status: response.status,
+            data: text,
+            error: response.ok ? null : "Invalid response format",
+          };
+        }
+      } catch (error) {
+        console.error("[Legal Editor] Request error:", error);
+        return {
+          success: false,
+          status: 0,
+          data: null,
+          error: error.message || "Network error",
+        };
+      }
+    },
+
+    // Get privacy policy
+    async getPrivacyPolicy() {
+      return await this.apiRequest("/api/legal/privacy_policy");
+    },
+
+    // Get terms and conditions
+    async getTermsConditions() {
+      return await this.apiRequest("/api/legal/terms_conditions");
+    },
+
+    // Update privacy policy
+    async updatePrivacyPolicy(title, content) {
+      console.log("[Legal Editor] Sending privacy policy update request");
+      console.log("[Legal Editor] Title:", title);
+      console.log("[Legal Editor] Content length:", content?.length || 0);
+      console.log(
+        "[Legal Editor] Content preview:",
+        content?.substring(0, 100) || "empty"
+      );
+
+      // Ensure we have valid data
+      if (!content || content.length === 0) {
+        console.error("[Legal Editor] Empty content detected, aborting update");
+        return {
+          success: false,
+          error: "Content cannot be empty",
+        };
+      }
+
+      try {
+        // Create JSON data - the backend expects JSON, not FormData
+        const jsonData = {
+          title: title?.trim() || "Privacy Policy",
+          content: content.trim(),
+        };
+
+        // Log the request details for debugging
+        console.log("[Legal Editor] Sending JSON data:", {
+          title: jsonData.title,
+          contentLength: jsonData.content.length,
+        });
+
+        // Directly make the fetch request with JSON
+        const url = `${apiBaseUrl}/api/legal/privacy_policy`;
+        console.log(`[Legal Editor] Sending direct PUT request to: ${url}`);
+
+        const response = await fetch(url, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+          },
+          body: JSON.stringify(jsonData),
+        });
+
+        console.log(
+          `[Legal Editor] Direct API response status: ${response.status}`
+        );
+
+        // Handle authentication errors
+        if (response.status === 401 || response.status === 403) {
+          console.error(
+            `[Legal Editor] Authentication failed: ${response.status}`
+          );
+          return {
+            success: false,
+            authenticated: false,
+            status: response.status,
+            error: "Authentication failed",
+            auth_failed: true,
+          };
+        }
+
+        // Parse the response
+        const contentType = response.headers.get("content-type");
+        let result;
+
+        if (contentType && contentType.includes("application/json")) {
+          const data = await response.json();
+          result = {
+            success: response.ok,
+            status: response.status,
+            data: data,
+            error: response.ok
+              ? null
+              : data.error || data.detail || "Unknown error",
+          };
+        } else {
+          const text = await response.text();
+          result = {
+            success: response.ok,
+            status: response.status,
+            data: text,
+            error: response.ok ? null : "Invalid response format",
+          };
+        }
+
+        // Add more detailed logging for errors
+        if (!result.success) {
+          console.error(
+            "[Legal Editor] Error in privacy policy update API response:",
+            result
+          );
+        } else {
+          console.log("[Legal Editor] Privacy policy update successful");
+        }
+
+        return result;
+      } catch (error) {
+        // Improved error handling
+        console.error(
+          "[Legal Editor] Exception in updatePrivacyPolicy:",
+          error
+        );
+        return {
+          success: false,
+          error:
+            error.message ||
+            "Failed to update privacy policy due to an unexpected error",
+        };
+      }
+    },
+
+    // Update terms and conditions
+    async updateTermsConditions(title, content) {
+      console.log("[Legal Editor] Sending terms & conditions update request");
+      console.log("[Legal Editor] Title:", title);
+      console.log("[Legal Editor] Content length:", content?.length || 0);
+      console.log(
+        "[Legal Editor] Content preview:",
+        content?.substring(0, 100) || "empty"
+      );
+
+      // Ensure we have valid data
+      if (!content || content.length === 0) {
+        console.error("[Legal Editor] Empty content detected, aborting update");
+        return {
+          success: false,
+          error: "Content cannot be empty",
+        };
+      }
+
+      try {
+        // Create JSON data - the backend expects JSON, not FormData
+        const jsonData = {
+          title: title?.trim() || "Terms & Conditions",
+          content: content.trim(),
+        };
+
+        // Log the request details for debugging
+        console.log("[Legal Editor] Sending JSON data:", {
+          title: jsonData.title,
+          contentLength: jsonData.content.length,
+        });
+
+        // Directly make the fetch request with JSON
+        const url = `${apiBaseUrl}/api/legal/terms_conditions`;
+        console.log(`[Legal Editor] Sending direct PUT request to: ${url}`);
+
+        const response = await fetch(url, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+          },
+          body: JSON.stringify(jsonData),
+        });
+
+        console.log(
+          `[Legal Editor] Direct API response status: ${response.status}`
+        );
+
+        // Handle authentication errors
+        if (response.status === 401 || response.status === 403) {
+          console.error(
+            `[Legal Editor] Authentication failed: ${response.status}`
+          );
+          return {
+            success: false,
+            authenticated: false,
+            status: response.status,
+            error: "Authentication failed",
+            auth_failed: true,
+          };
+        }
+
+        // Parse the response
+        const contentType = response.headers.get("content-type");
+        let result;
+
+        if (contentType && contentType.includes("application/json")) {
+          const data = await response.json();
+          result = {
+            success: response.ok,
+            status: response.status,
+            data: data,
+            error: response.ok
+              ? null
+              : data.error || data.detail || "Unknown error",
+          };
+        } else {
+          const text = await response.text();
+          result = {
+            success: response.ok,
+            status: response.status,
+            data: text,
+            error: response.ok ? null : "Invalid response format",
+          };
+        }
+
+        // Add more detailed logging for errors
+        if (!result.success) {
+          console.error(
+            "[Legal Editor] Error in terms & conditions update API response:",
+            result
+          );
+        } else {
+          console.log("[Legal Editor] Terms & conditions update successful");
+        }
+
+        return result;
+      } catch (error) {
+        // Improved error handling
+        console.error(
+          "[Legal Editor] Exception in updateTermsConditions:",
+          error
+        );
+        return {
+          success: false,
+          error:
+            error.message ||
+            "Failed to update terms & conditions due to an unexpected error",
+        };
+      }
+    },
+
+    // Test authentication
+    async testAuth() {
+      try {
+        const result = await this.apiRequest("/api/legal/auth_test");
+        console.log("[Legal Editor] Auth test results:", result);
+
+        // Ensure the authenticated property is always set based on the success
+        if (result.success) {
+          // If success is true but there's no authenticated property, add it
+          if (typeof result.authenticated === "undefined") {
+            result.authenticated = true;
+          }
+        } else {
+          // If success is false, ensure authenticated is false too
+          result.authenticated = false;
+        }
+
+        return result;
+      } catch (error) {
+        console.error("[Legal Editor] Auth test error:", error);
+        return {
+          success: false,
+          authenticated: false,
+          error: error.message || "Authentication failed",
+        };
+      }
+    },
+
+    // API debug endpoint
+    async debug() {
+      return await this.apiRequest("/api/legal/debug");
+    },
+
+    // Authentication debug endpoint
+    async debugAuth() {
+      try {
+        const result = await this.apiRequest("/api/legal/auth_debug");
+        console.log("[Legal Editor] Auth debug results:", result);
+        return result;
+      } catch (error) {
+        console.error("[Legal Editor] Auth debug error:", error);
+        return {
+          success: false,
+          error: error.message || "Error checking authentication status",
+        };
+      }
+    },
+  };
+</script>
+
+<script>
+  // Type declaration for EasyMDE
+  declare class EasyMDE {
+    constructor(options: any);
+    value(): string;
+    value(val: string): void;
+    codemirror: {
+      refresh(): void;
+    };
+  }
+
+  // Helper function to format dates
+  function formatDate(dateString: string): string {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch (e) {
+      console.error("[Legal Editor] Error formatting date:", e);
+      return dateString;
+    }
+  }
+
+  // Global variables for the editors
+  let privacyEditor: EasyMDE | null = null;
+  let termsEditor: EasyMDE | null = null;
+
+  // Make editors available globally
+  declare global {
+    interface Window {
+      privacyEditor: EasyMDE | null;
+      termsEditor: EasyMDE | null;
+      switchTab: (tabName: "privacy" | "terms") => void;
+      editorInitAttempts: number;
+    }
+  }
+
+  // Global tab switch function
+  function switchTab(tabName: "privacy" | "terms"): void {
+    console.log(`[Legal Editor] Switching to ${tabName} tab`);
+
+    const privacyTab = document.getElementById("privacyTab");
+    const termsTab = document.getElementById("termsTab");
+    const privacyContent = document.getElementById("privacy");
+    const termsContent = document.getElementById("terms");
+
+    if (!privacyTab || !termsTab || !privacyContent || !termsContent) {
+      console.error("[Legal Editor] Tab elements not found!");
+      return;
+    }
+
+    if (tabName === "privacy") {
+      // Update tab buttons
+      privacyTab.classList.add("active");
+      termsTab.classList.remove("active");
+
+      // Show/hide content
+      privacyContent.style.display = "block";
+      termsContent.style.display = "none";
+
+      // Refresh editor
+      setTimeout(() => {
+        if (privacyEditor && privacyEditor.codemirror) {
+          privacyEditor.codemirror.refresh();
+          console.log("[Legal Editor] Privacy editor refreshed");
+        }
+      }, 200);
+    } else if (tabName === "terms") {
+      // Update tab buttons
+      termsTab.classList.add("active");
+      privacyTab.classList.remove("active");
+
+      // Show/hide content
+      termsContent.style.display = "block";
+      privacyContent.style.display = "none";
+
+      // Refresh editor
+      setTimeout(() => {
+        if (termsEditor && termsEditor.codemirror) {
+          termsEditor.codemirror.refresh();
+          console.log("[Legal Editor] Terms editor refreshed");
+        }
+      }, 200);
+    }
+  }
+
+  // Make function available globally
+  window.switchTab = switchTab;
+
+  // Function to initialize everything
+  function initLegalEditor(): void {
+    console.log("[Legal Editor] Initializing editors and tabs");
+
+    // Hide any previous error messages
+    document.getElementById("privacyEditorError")?.classList.add("hidden");
+    document.getElementById("termsEditorError")?.classList.add("hidden");
+
+    // Check authentication status immediately
+    window.legalApi
+      .testAuth()
+      .then((result: { success: boolean; authenticated?: boolean }) => {
+        if (!result.success || !result.authenticated) {
+          console.error(
+            "[Legal Editor] Authentication test failed on initialization"
+          );
+          updateApiStatus("API authentication failed ❌", "error");
+
+          const statusMsg = document.getElementById("status-message");
+          if (statusMsg) {
+            statusMsg.textContent = "Authentication error. Please login again.";
+            statusMsg.className =
+              "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+            statusMsg.classList.remove("hidden");
+          }
+        } else {
+          console.log("[Legal Editor] Authentication test successful!");
+          updateApiStatus("API connected and authenticated ✅", "success");
+        }
+      })
+      .catch((err: Error) => {
+        console.error("[Legal Editor] Error testing authentication:", err);
+      });
+
+    // Initialize editors
+    try {
+      // Check if SimpleMDE is loaded
+      if (typeof window.EasyMDE !== "function") {
+        console.error(
+          "[Legal Editor] EasyMDE not loaded! Waiting for script to load..."
+        );
+        // Show error after a few attempts
+        if (window.editorInitAttempts > 2) {
+          document
+            .getElementById("privacyEditorError")
+            ?.classList.remove("hidden");
+          document
+            .getElementById("termsEditorError")
+            ?.classList.remove("hidden");
+        }
+        // Try again after a delay, but limit attempts
+        window.editorInitAttempts = (window.editorInitAttempts || 0) + 1;
+        if (window.editorInitAttempts < 5) {
+          setTimeout(initLegalEditor, 1000);
+        }
+        return;
+      }
+
+      // Initialize privacy editor
+      const privacyEditorElement = document.getElementById("privacyEditor");
+      if (!privacyEditorElement) {
+        console.error("[Legal Editor] Privacy editor element not found!");
+        return;
+      }
+
+      // Using a more robust configuration for EasyMDE
+      try {
+        privacyEditor = new EasyMDE({
+          element: privacyEditorElement,
+          spellChecker: false,
+          autosave: {
+            enabled: true,
+            uniqueId: "privacyEditor",
+            delay: 1000,
+          },
+          toolbar: [
+            "bold",
+            "italic",
+            "heading",
+            "|",
+            "quote",
+            "unordered-list",
+            "ordered-list",
+            "|",
+            "link",
+            "image",
+            "|",
+            "preview",
+            "side-by-side",
+            "fullscreen",
+            "|",
+            "guide",
+          ],
+          status: ["autosave", "lines", "words", "cursor"],
+          renderingConfig: {
+            singleLineBreaks: false,
+            codeSyntaxHighlighting: true,
+          },
+          tabSize: 4,
+        });
+
+        console.log("[Legal Editor] Privacy editor created:", privacyEditor);
+        // Make available globally
+        window.privacyEditor = privacyEditor;
+      } catch (err) {
+        console.error("[Legal Editor] Failed to create privacy editor:", err);
+        document
+          .getElementById("privacyEditorError")
+          ?.classList.remove("hidden");
+      }
+
+      // Initialize terms editor
+      const termsEditorElement = document.getElementById("termsEditor");
+      if (!termsEditorElement) {
+        console.error("[Legal Editor] Terms editor element not found!");
+        return;
+      }
+
+      try {
+        termsEditor = new EasyMDE({
+          element: termsEditorElement,
+          spellChecker: false,
+          autosave: {
+            enabled: true,
+            uniqueId: "termsEditor",
+            delay: 1000,
+          },
+          toolbar: [
+            "bold",
+            "italic",
+            "heading",
+            "|",
+            "quote",
+            "unordered-list",
+            "ordered-list",
+            "|",
+            "link",
+            "image",
+            "|",
+            "preview",
+            "side-by-side",
+            "fullscreen",
+            "|",
+            "guide",
+          ],
+          status: ["autosave", "lines", "words", "cursor"],
+          renderingConfig: {
+            singleLineBreaks: false,
+            codeSyntaxHighlighting: true,
+          },
+          tabSize: 4,
+        });
+
+        console.log("[Legal Editor] Terms editor created:", termsEditor);
+        // Make available globally
+        window.termsEditor = termsEditor;
+      } catch (err) {
+        console.error("[Legal Editor] Failed to create terms editor:", err);
+        document.getElementById("termsEditorError")?.classList.remove("hidden");
+      }
+
+      console.log("[Legal Editor] Editors initialized");
+    } catch (error) {
+      console.error("[Legal Editor] Error initializing editors:", error);
+      document.getElementById("privacyEditorError")?.classList.remove("hidden");
+      document.getElementById("termsEditorError")?.classList.remove("hidden");
+      return;
+    }
+
+    // Initialize first tab
+    console.log("[Legal Editor] Setting initial tab");
+    switchTab("privacy");
+
+    // Fetch data for initial load
+    fetchLegalDocuments();
+  }
+
+  // Function to fetch legal documents
+  async function fetchLegalDocuments() {
+    showStatus("Loading legal documents...", "info");
+
+    try {
+      // Test authentication first
+      const authResult = await window.legalApi.testAuth();
+      console.log("[Legal Editor] Auth test result:", authResult);
+
+      updateApiStatus(
+        authResult.success
+          ? "API connected and authenticated ✅"
+          : `API authentication failed: ${authResult.error} ❌`
+      );
+
+      if (!authResult.success) {
+        showStatus("Authentication failed. Please log in again.", "error");
+        return;
+      }
+
+      // Fetch privacy policy
+      const privacyResult = await window.legalApi.getPrivacyPolicy();
+      console.log("[Legal Editor] Privacy policy result:", privacyResult);
+
+      if (privacyResult.success && privacyResult.data) {
+        const data = privacyResult.data.data;
+        // Update the form elements
+        const privacyTitleEl = document.getElementById(
+          "privacyTitle"
+        ) as HTMLInputElement;
+        if (privacyTitleEl) {
+          privacyTitleEl.value = data.title || "Privacy Policy";
+        }
+
+        if (privacyEditor) {
+          privacyEditor.value(data.content || "");
+        }
+
+        if (data.updated_at) {
+          const privacyLastUpdatedEl =
+            document.getElementById("privacyLastUpdated");
+          if (privacyLastUpdatedEl) {
+            privacyLastUpdatedEl.textContent = `Last updated: ${formatDate(data.updated_at)}`;
+          }
+        }
+      } else {
+        console.error(
+          "[Legal Editor] Failed to load privacy policy:",
+          privacyResult.error
+        );
+      }
+
+      // Fetch terms & conditions
+      const termsResult = await window.legalApi.getTermsConditions();
+      console.log("[Legal Editor] Terms result:", termsResult);
+
+      if (termsResult.success && termsResult.data) {
+        const data = termsResult.data.data;
+        // Update the form elements
+        const termsTitleEl = document.getElementById(
+          "termsTitle"
+        ) as HTMLInputElement;
+        if (termsTitleEl) {
+          termsTitleEl.value = data.title || "Terms & Conditions";
+        }
+
+        if (termsEditor) {
+          termsEditor.value(data.content || "");
+        }
+
+        if (data.updated_at) {
+          const termsLastUpdatedEl =
+            document.getElementById("termsLastUpdated");
+          if (termsLastUpdatedEl) {
+            termsLastUpdatedEl.textContent = `Last updated: ${formatDate(data.updated_at)}`;
+          }
+        }
+      } else {
+        console.error(
+          "[Legal Editor] Failed to load terms & conditions:",
+          termsResult.error
+        );
+      }
+
+      showStatus("Documents loaded successfully", "success");
+    } catch (error: unknown) {
+      console.error("[Legal Editor] Error fetching legal documents:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      showStatus("Failed to load documents: " + errorMessage, "error");
+      updateApiStatus("API connection error ❌");
+    }
+  }
+
+  // Function to update API status display
+  function updateApiStatus(message: string, type = ""): void {
+    const statusEl = document.getElementById("apiStatus");
+    if (statusEl) {
+      statusEl.textContent = message;
+
+      // Reset classes
+      statusEl.classList.remove(
+        "text-green-500",
+        "text-red-500",
+        "text-yellow-500"
+      );
+
+      // Add appropriate color class
+      if (type === "success" || message.includes("✅")) {
+        statusEl.classList.add("text-green-500");
+      } else if (type === "error" || message.includes("❌")) {
+        statusEl.classList.add("text-red-500");
+      } else {
+        statusEl.classList.add("text-yellow-500");
+      }
+    }
+  }
+
+  // Function to show status messages
+  function showStatus(message: string, type = "info"): void {
+    const statusEl = document.getElementById("status-message");
+    if (!statusEl) return;
+
+    // Set appropriate styling based on message type
+    statusEl.className = "mb-4 p-3 rounded";
+
+    if (type === "error") {
+      statusEl.classList.add(
+        "bg-red-100",
+        "text-red-800",
+        "border",
+        "border-red-200"
+      );
+    } else if (type === "success") {
+      statusEl.classList.add(
+        "bg-green-100",
+        "text-green-800",
+        "border",
+        "border-green-200"
+      );
+    } else {
+      statusEl.classList.add(
+        "bg-blue-100",
+        "text-blue-800",
+        "border",
+        "border-blue-200"
+      );
+    }
+
+    statusEl.textContent = message;
+    statusEl.classList.remove("hidden");
+
+    // Auto-hide after a delay for success/info messages
+    if (type !== "error") {
+      setTimeout(() => {
+        statusEl.classList.add("hidden");
+      }, 5000);
+    }
+  }
+
+  // Wait for DOM to be fully loaded
+  document.addEventListener("DOMContentLoaded", function () {
+    console.log("[Legal Editor] DOM fully loaded");
+
+    // Add a function to refresh the token from local storage
+    function refreshTokenStorage() {
+      console.log("[Legal Editor] Attempting to refresh token storage");
+      const statusMsg = document.getElementById("status-message");
+
+      try {
+        // Get token
+        const tokenName = "adminToken";
+        const token = localStorage.getItem(tokenName);
+
+        if (!token) {
+          console.error("[Legal Editor] No token found in localStorage");
+          if (statusMsg) {
+            statusMsg.textContent =
+              "No authentication token found. Please login again.";
+            statusMsg.className =
+              "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+            statusMsg.classList.remove("hidden");
+
+            // Add login button
+            const loginLink = document.createElement("a");
+            loginLink.href = "/login?source=legal_editor";
+            loginLink.className = "btn btn-primary mt-2";
+            loginLink.textContent = "Go to Login Page";
+            statusMsg.appendChild(document.createElement("br"));
+            statusMsg.appendChild(loginLink);
+          }
+          return false;
+        }
+
+        // Check if token is valid JWT format
+        const parts = token.split(".");
+        if (parts.length !== 3) {
+          console.error("[Legal Editor] Token is not in valid JWT format");
+          return false;
+        }
+
+        // Try to decode the payload to check expiration
+        try {
+          // Base64 decode the payload
+          const payload = JSON.parse(
+            atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
+          );
+          console.log("[Legal Editor] Token payload:", payload);
+
+          // Check if token has expiry and has not expired
+          if (payload.exp) {
+            const now = Math.floor(Date.now() / 1000);
+            if (payload.exp < now) {
+              console.error("[Legal Editor] Token has expired");
+              if (statusMsg) {
+                statusMsg.textContent =
+                  "Your session has expired. Please login again.";
+                statusMsg.className =
+                  "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+                statusMsg.classList.remove("hidden");
+
+                // Add login button
+                const loginLink = document.createElement("a");
+                loginLink.href = "/login?source=legal_editor";
+                loginLink.className = "btn btn-primary mt-2";
+                loginLink.textContent = "Go to Login Page";
+                statusMsg.appendChild(document.createElement("br"));
+                statusMsg.appendChild(loginLink);
+              }
+              return false;
+            }
+          }
+
+          // Ensure token is also saved as a cookie for server-side auth
+          document.cookie = `adminToken=${token}; path=/; max-age=86400; SameSite=Lax`;
+          console.log("[Legal Editor] Token refreshed and saved as cookie");
+          return true;
+        } catch (error) {
+          console.error("[Legal Editor] Error decoding token:", error);
+          return false;
+        }
+      } catch (error) {
+        console.error("[Legal Editor] Error refreshing token:", error);
+        return false;
+      }
+    }
+
+    // Add a "Debug & Reset" button to help with troubleshooting
+    const apiStatusContainer = document.querySelector("#apiStatus");
+    if (apiStatusContainer && apiStatusContainer.parentElement) {
+      const buttonContainer =
+        apiStatusContainer.parentElement.querySelector(".mt-4");
+      if (buttonContainer) {
+        const resetTokenBtn = document.createElement("button");
+        resetTokenBtn.textContent = "Refresh Token Storage";
+        resetTokenBtn.className = "btn btn-sm btn-warning ml-2";
+        resetTokenBtn.onclick = function () {
+          const result = refreshTokenStorage();
+          if (result) {
+            const statusMsg = document.getElementById("status-message");
+            if (statusMsg) {
+              statusMsg.textContent =
+                "Token storage refreshed successfully. Try saving again.";
+              statusMsg.className =
+                "mb-4 p-3 rounded bg-green-100 text-green-800 border border-green-200";
+              statusMsg.classList.remove("hidden");
+            }
+          }
+        };
+
+        // Clear token button
+        const clearTokenBtn = document.createElement("button");
+        clearTokenBtn.textContent = "Clear Token & Logout";
+        clearTokenBtn.className = "btn btn-sm btn-danger ml-2";
+        clearTokenBtn.onclick = function () {
+          localStorage.removeItem("adminToken");
+          localStorage.removeItem("tokenExpiry");
+          document.cookie = "adminToken=; path=/; max-age=0; SameSite=Lax";
+          window.location.href = "/login?source=legal_editor";
+        };
+
+        buttonContainer.appendChild(resetTokenBtn);
+        buttonContainer.appendChild(clearTokenBtn);
+      }
+    }
+
+    // Call refresh token on page load
+    refreshTokenStorage();
+
+    // Add event listeners to tab buttons
+    const privacyTabBtn = document.getElementById("privacyTab");
+    const termsTabBtn = document.getElementById("termsTab");
+
+    if (privacyTabBtn) {
+      privacyTabBtn.addEventListener("click", () => switchTab("privacy"));
+    }
+
+    if (termsTabBtn) {
+      termsTabBtn.addEventListener("click", () => switchTab("terms"));
+    }
+
+    // Add event listeners for test buttons
+    document.getElementById("testAuth")?.addEventListener("click", async () => {
+      updateApiStatus("Testing authentication...");
+      const result = await window.legalApi.testAuth();
+      updateApiStatus(
+        result.success
+          ? `Authentication successful: ${result.data?.user || "Unknown user"} ✅`
+          : `Authentication failed: ${result.error} ❌`,
+        result.success ? "success" : "error"
+      );
+    });
+
+    document.getElementById("debugApi")?.addEventListener("click", async () => {
+      updateApiStatus("Debugging API connection...");
+      const result = await window.legalApi.debug();
+
+      if (result.success) {
+        updateApiStatus(
+          `API debug successful. Document count: ${result.data?.document_count || 0} ✅`,
+          "success"
+        );
+      } else {
+        updateApiStatus(`API debug failed: ${result.error} ❌`, "error");
+      }
+    });
+
+    // Small delay to ensure everything is rendered
+    setTimeout(initLegalEditor, 100);
+  });
+</script>
+
+<script define:vars={{ apiBaseUrl, formatDate }}>
+  // Form submission for Privacy Policy
+  document.addEventListener("DOMContentLoaded", function () {
+    // Helper function to format dates if not provided from server
+    function formatLocalDate(dateString) {
+      if (typeof formatDate === "function") {
+        return formatDate(dateString);
+      }
+
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+      } catch (e) {
+        console.error("[Legal Editor] Error formatting date:", e);
+        return dateString;
+      }
+    }
+
+    // Setup form submissions
+    document
+      .getElementById("privacyForm")
+      ?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        console.log("[Legal Editor] Privacy form submitted");
+
+        try {
+          const statusMsg = document.getElementById("status-message");
+          if (statusMsg) {
+            statusMsg.textContent = "Saving privacy policy...";
+            statusMsg.className =
+              "mb-4 p-3 rounded bg-blue-100 text-blue-800 border border-blue-200";
+            statusMsg.classList.remove("hidden");
+          }
+
+          const saveBtn = document.getElementById("savePrivacy");
+          if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = "Saving...";
+          }
+
+          // First check authentication separately to avoid unexpected redirect
+          try {
+            const authTest = await window.legalApi.testAuth();
+            console.log("[Legal Editor] Complete auth test result:", authTest);
+
+            // Updated auth check - only fail if success is explicitly false or authenticated is explicitly false
+            if (authTest.success === false) {
+              if (statusMsg) {
+                statusMsg.textContent =
+                  "Authentication failed - Please login again";
+                statusMsg.className =
+                  "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+              }
+              console.error(
+                "[Legal Editor] Authentication check failed before saving:",
+                authTest
+              );
+
+              // Add login button instead of auto-redirect
+              if (statusMsg) {
+                const loginLink = document.createElement("a");
+                loginLink.href = "/login?source=legal_editor";
+                loginLink.className = "btn btn-primary mt-2";
+                loginLink.textContent = "Go to Login Page";
+                statusMsg.appendChild(document.createElement("br"));
+                statusMsg.appendChild(loginLink);
+              }
+
+              // Re-enable the save button
+              if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML =
+                  '<i class="fas fa-save me-2"></i> Save Privacy Policy';
+              }
+              return;
+            }
+          } catch (e) {
+            console.error("[Legal Editor] Error checking authentication:", e);
+          }
+
+          const titleElement = document.getElementById("privacyTitle");
+          if (!titleElement) {
+            console.error("[Legal Editor] Privacy title element not found");
+            return;
+          }
+
+          const title = titleElement.value || "Privacy Policy";
+
+          // Get content from the editor - handling all possible cases
+          let content = "";
+
+          // Improved content extraction approach
+          // Try to get content from the global editor object first
+          if (
+            window.privacyEditor &&
+            typeof window.privacyEditor.value === "function"
+          ) {
+            try {
+              content = window.privacyEditor.value();
+              console.log(
+                "[Legal Editor] Got content from global editor object, length:",
+                content.length
+              );
+            } catch (err) {
+              console.error("[Legal Editor] Error getting editor value:", err);
+            }
+          }
+
+          // If still empty, try the codemirror instance directly
+          if (
+            !content &&
+            window.privacyEditor &&
+            window.privacyEditor.codemirror
+          ) {
+            try {
+              content = window.privacyEditor.codemirror.getValue();
+              console.log(
+                "[Legal Editor] Retrieved content from CodeMirror API, length:",
+                content.length
+              );
+            } catch (e) {
+              console.error(
+                "[Legal Editor] Error retrieving content from CodeMirror:",
+                e
+              );
+            }
+          }
+
+          // Last resort: get content directly from textarea
+          if (!content || content.length === 0) {
+            const privacyTextarea = document.getElementById("privacyEditor");
+            if (
+              privacyTextarea &&
+              privacyTextarea instanceof HTMLTextAreaElement
+            ) {
+              content = privacyTextarea.value;
+              console.log(
+                "[Legal Editor] Got content from textarea element, length:",
+                content.length
+              );
+            }
+          }
+
+          console.log(
+            "[Legal Editor] Privacy policy content length:",
+            content.length
+          );
+
+          if (!content || content.length === 0) {
+            console.warn("[Legal Editor] Content appears to be empty!");
+
+            if (statusMsg) {
+              statusMsg.textContent =
+                "Error: Cannot save empty content. Please add some text to the editor.";
+              statusMsg.className =
+                "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+              statusMsg.classList.remove("hidden");
+            }
+
+            if (saveBtn) {
+              saveBtn.disabled = false;
+              saveBtn.innerHTML =
+                '<i class="fas fa-save me-2"></i> Save Privacy Policy';
+            }
+            return;
+          }
+
+          // Process and clean content if needed (text-only processing)
+          content = content.trim();
+
+          const result = await window.legalApi.updatePrivacyPolicy(
+            title,
+            content
+          );
+
+          console.log("[Legal Editor] Update privacy policy result:", result);
+
+          if (result.success) {
+            if (statusMsg) {
+              statusMsg.textContent = "Privacy policy saved successfully!";
+              statusMsg.className =
+                "mb-4 p-3 rounded bg-green-100 text-green-800 border border-green-200";
+            }
+
+            // Update last updated date
+            if (result.data?.data?.updated_at) {
+              const lastUpdatedEl =
+                document.getElementById("privacyLastUpdated");
+              if (lastUpdatedEl) {
+                lastUpdatedEl.textContent = `Last updated: ${formatLocalDate(result.data.data.updated_at)}`;
+              }
+            }
+
+            // Auto-hide the message after a delay
+            setTimeout(() => {
+              if (statusMsg) statusMsg.classList.add("hidden");
+            }, 3000);
+          } else {
+            // Check if this is an auth failure
+            if (result.auth_failed) {
+              if (statusMsg) {
+                statusMsg.textContent =
+                  "Authentication failed - Please login again";
+                statusMsg.className =
+                  "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+
+                // Add login button
+                const loginLink = document.createElement("a");
+                loginLink.href = "/login?source=legal_editor";
+                loginLink.className = "btn btn-primary mt-2";
+                loginLink.textContent = "Go to Login Page";
+                statusMsg.appendChild(document.createElement("br"));
+                statusMsg.appendChild(loginLink);
+              }
+              console.error("[Legal Editor] Authentication failed during save");
+            } else {
+              if (statusMsg) {
+                statusMsg.textContent = `Error saving privacy policy: ${result.error}`;
+                statusMsg.className =
+                  "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+              }
+              console.error("[Legal Editor] Save error:", result);
+            }
+          }
+        } catch (error) {
+          console.error("[Legal Editor] Error saving privacy policy:", error);
+          const statusMsg = document.getElementById("status-message");
+          if (statusMsg) {
+            statusMsg.textContent = `Error: ${error.message || "Unknown error"}`;
+            statusMsg.className =
+              "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+            statusMsg.classList.remove("hidden");
+          }
+        } finally {
+          const saveBtn = document.getElementById("savePrivacy");
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML =
+              '<i class="fas fa-save me-2"></i> Save Privacy Policy';
+          }
+        }
+      });
+
+    // Form submission for Terms & Conditions
+    document
+      .getElementById("termsForm")
+      ?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        console.log("[Legal Editor] Terms form submitted");
+
+        try {
+          const statusMsg = document.getElementById("status-message");
+          if (statusMsg) {
+            statusMsg.textContent = "Saving terms & conditions...";
+            statusMsg.className =
+              "mb-4 p-3 rounded bg-blue-100 text-blue-800 border border-blue-200";
+            statusMsg.classList.remove("hidden");
+          }
+
+          const saveBtn = document.getElementById("saveTerms");
+          if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = "Saving...";
+          }
+
+          // First check authentication separately to avoid unexpected redirect
+          try {
+            const authTest = await window.legalApi.testAuth();
+            console.log("[Legal Editor] Complete auth test result:", authTest);
+
+            // Updated auth check - only fail if success is explicitly false or authenticated is explicitly false
+            if (authTest.success === false) {
+              if (statusMsg) {
+                statusMsg.textContent =
+                  "Authentication failed - Please login again";
+                statusMsg.className =
+                  "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+              }
+              console.error(
+                "[Legal Editor] Authentication check failed before saving:",
+                authTest
+              );
+
+              // Add login button instead of auto-redirect
+              if (statusMsg) {
+                const loginLink = document.createElement("a");
+                loginLink.href = "/login?source=legal_editor";
+                loginLink.className = "btn btn-primary mt-2";
+                loginLink.textContent = "Go to Login Page";
+                statusMsg.appendChild(document.createElement("br"));
+                statusMsg.appendChild(loginLink);
+              }
+
+              // Re-enable the save button
+              if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML =
+                  '<i class="fas fa-save me-2"></i> Save Terms & Conditions';
+              }
+              return;
+            }
+          } catch (e) {
+            console.error("[Legal Editor] Error checking authentication:", e);
+          }
+
+          const titleElement = document.getElementById("termsTitle");
+          if (!titleElement) {
+            console.error("[Legal Editor] Terms title element not found");
+            return;
+          }
+
+          const title = titleElement.value || "Terms & Conditions";
+
+          // Get content from the editor - handling all possible cases
+          let content = "";
+
+          // Improved content extraction approach
+          // Try to get content from the global editor object first
+          if (
+            window.termsEditor &&
+            typeof window.termsEditor.value === "function"
+          ) {
+            try {
+              content = window.termsEditor.value();
+              console.log(
+                "[Legal Editor] Got content from global editor object, length:",
+                content.length
+              );
+            } catch (err) {
+              console.error("[Legal Editor] Error getting editor value:", err);
+            }
+          }
+
+          // If still empty, try the codemirror instance directly
+          if (!content && window.termsEditor && window.termsEditor.codemirror) {
+            try {
+              content = window.termsEditor.codemirror.getValue();
+              console.log(
+                "[Legal Editor] Retrieved content from CodeMirror API, length:",
+                content.length
+              );
+            } catch (e) {
+              console.error(
+                "[Legal Editor] Error retrieving content from CodeMirror:",
+                e
+              );
+            }
+          }
+
+          // Last resort: get content directly from textarea
+          if (!content || content.length === 0) {
+            const termsTextarea = document.getElementById("termsEditor");
+            if (termsTextarea && termsTextarea instanceof HTMLTextAreaElement) {
+              content = termsTextarea.value;
+              console.log(
+                "[Legal Editor] Got content from textarea element, length:",
+                content.length
+              );
+            }
+          }
+
+          console.log(
+            "[Legal Editor] Terms & conditions content length:",
+            content.length
+          );
+
+          if (!content || content.length === 0) {
+            console.warn("[Legal Editor] Content appears to be empty!");
+
+            if (statusMsg) {
+              statusMsg.textContent =
+                "Error: Cannot save empty content. Please add some text to the editor.";
+              statusMsg.className =
+                "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+              statusMsg.classList.remove("hidden");
+            }
+
+            if (saveBtn) {
+              saveBtn.disabled = false;
+              saveBtn.innerHTML =
+                '<i class="fas fa-save me-2"></i> Save Terms & Conditions';
+            }
+            return;
+          }
+
+          // Process and clean content if needed (text-only processing)
+          content = content.trim();
+
+          const result = await window.legalApi.updateTermsConditions(
+            title,
+            content
+          );
+
+          console.log("[Legal Editor] Update terms result:", result);
+
+          if (result.success) {
+            if (statusMsg) {
+              statusMsg.textContent = "Terms & conditions saved successfully!";
+              statusMsg.className =
+                "mb-4 p-3 rounded bg-green-100 text-green-800 border border-green-200";
+            }
+
+            // Update last updated date
+            if (result.data?.data?.updated_at) {
+              const lastUpdatedEl = document.getElementById("termsLastUpdated");
+              if (lastUpdatedEl) {
+                lastUpdatedEl.textContent = `Last updated: ${formatLocalDate(result.data.data.updated_at)}`;
+              }
+            }
+
+            // Auto-hide the message after a delay
+            setTimeout(() => {
+              if (statusMsg) statusMsg.classList.add("hidden");
+            }, 3000);
+          } else {
+            // Check if this is an auth failure
+            if (result.auth_failed) {
+              if (statusMsg) {
+                statusMsg.textContent =
+                  "Authentication failed - Please login again";
+                statusMsg.className =
+                  "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+
+                // Add login button
+                const loginLink = document.createElement("a");
+                loginLink.href = "/login?source=legal_editor";
+                loginLink.className = "btn btn-primary mt-2";
+                loginLink.textContent = "Go to Login Page";
+                statusMsg.appendChild(document.createElement("br"));
+                statusMsg.appendChild(loginLink);
+              }
+              console.error("[Legal Editor] Authentication failed during save");
+            } else {
+              if (statusMsg) {
+                statusMsg.textContent = `Error saving terms & conditions: ${result.error}`;
+                statusMsg.className =
+                  "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+              }
+              console.error("[Legal Editor] Save error:", result);
+            }
+          }
+        } catch (error) {
+          console.error(
+            "[Legal Editor] Error saving terms & conditions:",
+            error
+          );
+          const statusMsg = document.getElementById("status-message");
+          if (statusMsg) {
+            statusMsg.textContent = `Error: ${error.message || "Unknown error"}`;
+            statusMsg.className =
+              "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+            statusMsg.classList.remove("hidden");
+          }
+        } finally {
+          const saveBtn = document.getElementById("saveTerms");
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML =
+              '<i class="fas fa-save me-2"></i> Save Terms & Conditions';
+          }
+        }
+      });
+
+    // Debug button handlers
+    document
+      .getElementById("debugPrivacy")
+      ?.addEventListener("click", async () => {
+        console.log("[Legal Editor] Debug button clicked");
+        const statusMsg = document.getElementById("status-message");
+        if (statusMsg) {
+          statusMsg.textContent = "Debugging authentication...";
+          statusMsg.className =
+            "mb-4 p-3 rounded bg-blue-100 text-blue-800 border border-blue-200";
+          statusMsg.classList.remove("hidden");
+        }
+
+        try {
+          const result = await window.legalApi.debugAuth();
+          console.log("[Legal Editor] Debug auth result:", result);
+
+          // Format the debug info nicely
+          if (result.success) {
+            let debugInfo = "<h5>Authentication Debug Info</h5>";
+
+            // Environment info
+            debugInfo += "<h6>Environment</h6>";
+            debugInfo += `<pre>${JSON.stringify(result.data.environment, null, 2)}</pre>`;
+
+            // Token info
+            debugInfo += "<h6>Token</h6>";
+            debugInfo += `<pre>${JSON.stringify(result.data.token, null, 2)}</pre>`;
+
+            // Secret key info (limited info for security)
+            debugInfo += "<h6>Secret Key</h6>";
+            debugInfo += `<pre>${JSON.stringify(result.data.secret_key, null, 2)}</pre>`;
+
+            if (statusMsg) {
+              statusMsg.innerHTML = debugInfo;
+              statusMsg.className =
+                "mb-4 p-3 rounded bg-gray-100 text-gray-800 border border-gray-200 overflow-auto";
+            }
+          } else {
+            if (statusMsg) {
+              statusMsg.textContent = `Debug error: ${result.error}`;
+              statusMsg.className =
+                "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+            }
+          }
+        } catch (error) {
+          console.error("[Legal Editor] Debug error:", error);
+          if (statusMsg) {
+            statusMsg.textContent = `Debug error: ${error.message || "Unknown error"}`;
+            statusMsg.className =
+              "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+          }
+        }
+      });
+
+    document
+      .getElementById("debugTerms")
+      ?.addEventListener("click", async () => {
+        console.log("[Legal Editor] Debug button clicked");
+        const statusMsg = document.getElementById("status-message");
+        if (statusMsg) {
+          statusMsg.textContent = "Debugging authentication...";
+          statusMsg.className =
+            "mb-4 p-3 rounded bg-blue-100 text-blue-800 border border-blue-200";
+          statusMsg.classList.remove("hidden");
+        }
+
+        try {
+          const result = await window.legalApi.debugAuth();
+          console.log("[Legal Editor] Debug auth result:", result);
+
+          // Format the debug info nicely
+          if (result.success) {
+            let debugInfo = "<h5>Authentication Debug Info</h5>";
+
+            // Environment info
+            debugInfo += "<h6>Environment</h6>";
+            debugInfo += `<pre>${JSON.stringify(result.data.environment, null, 2)}</pre>`;
+
+            // Token info
+            debugInfo += "<h6>Token</h6>";
+            debugInfo += `<pre>${JSON.stringify(result.data.token, null, 2)}</pre>`;
+
+            // Secret key info (limited info for security)
+            debugInfo += "<h6>Secret Key</h6>";
+            debugInfo += `<pre>${JSON.stringify(result.data.secret_key, null, 2)}</pre>`;
+
+            if (statusMsg) {
+              statusMsg.innerHTML = debugInfo;
+              statusMsg.className =
+                "mb-4 p-3 rounded bg-gray-100 text-gray-800 border border-gray-200 overflow-auto";
+            }
+          } else {
+            if (statusMsg) {
+              statusMsg.textContent = `Debug error: ${result.error}`;
+              statusMsg.className =
+                "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+            }
+          }
+        } catch (error) {
+          console.error("[Legal Editor] Debug error:", error);
+          if (statusMsg) {
+            statusMsg.textContent = `Debug error: ${error.message || "Unknown error"}`;
+            statusMsg.className =
+              "mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-200";
+          }
+        }
+      });
+  });
+</script>
+
+<style>
+  /* Page styles */
+  h1 {
+    color: var(--primary);
+    margin-bottom: 1.5rem;
+  }
+
+  /* EasyMDE editor styling */
+  .EasyMDEContainer {
+    min-height: 500px;
+    width: 100%;
+    margin-bottom: 2rem;
+  }
+
+  .editor-toolbar {
+    background-color: #2a2a2a;
+    border-color: #444;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+  }
+
+  .editor-toolbar button {
+    color: #ddd !important;
+  }
+
+  .editor-toolbar button:hover,
+  .editor-toolbar button.active {
+    background-color: #3a3a3a !important;
+    border-color: #555 !important;
+  }
+
+  .CodeMirror {
+    background-color: #2a2a2a !important;
+    color: #fff !important;
+    border-color: #444 !important;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    padding: 12px;
+    height: 500px !important; /* Force taller editor */
+    font-size: 16px; /* Larger font size */
+  }
+
+  .CodeMirror-cursor {
+    border-left: 1px solid var(--primary) !important;
+  }
+
+  .CodeMirror-selected {
+    background-color: rgba(255, 243, 0, 0.2) !important;
+  }
+
+  /* Debug info styling */
+  .debug-info {
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 0.85rem;
+  }
+
+  .text-primary {
+    color: var(--primary);
+  }
+
+  .border-primary {
+    border-color: var(--primary) !important;
+  }
+
+  /* Tab styling */
+  .nav-tabs {
+    border-bottom: 1px solid #333;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .nav-link {
+    color: var(--gray-light);
+    border-radius: 4px 4px 0 0;
+    padding: 0.5rem 1rem;
+    margin-right: 0.25rem;
+    border: 1px solid transparent;
+  }
+
+  .nav-link:hover {
+    color: var(--light);
+    background-color: rgba(255, 255, 255, 0.05);
+    border-bottom-color: transparent;
+  }
+
+  .nav-link.active {
+    color: var(--primary);
+    background-color: #1a1a1a;
+    border-color: #333 #333 #1a1a1a;
+    border-bottom: 2px solid var(--primary);
+  }
+
+  /* Form controls */
+  .form-control {
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    width: 100%;
+  }
+
+  .bg-dark {
+    background-color: #2a2a2a;
+  }
+
+  .text-light {
+    color: #fff;
+  }
+
+  .border-secondary {
+    border-color: #444;
+  }
+
+  /* Content containers */
+  #privacy,
+  #terms {
+    display: none; /* Hide both by default */
+  }
+
+  #privacy.active,
+  #terms.active {
+    display: block; /* Only show active section */
+  }
+
+  .text-danger {
+    color: #ff4d4d;
+  }
+
+  .hidden {
+    display: none;
+  }
+</style>
